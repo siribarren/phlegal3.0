@@ -1199,6 +1199,7 @@ const VINTAGE_PALETTE = ["#1755D4", "#10B981", "#7C3AED", "#F59E0B", "#0EA5E9", 
 
 function VintageCohortTable({ estudiosSel }: { estudiosSel: Set<string> }) {
   const [mode, setMode] = useState<"acumulado" | "comparativo">("acumulado");
+  const [unit, setUnit] = useState<"monto" | "pct">("monto");
 
   const avgRecupero = ESTUDIOS.reduce((a, e) => a + e.recuperoPct, 0) / ESTUDIOS.length;
   const factor = estudiosSel.size === 0
@@ -1211,15 +1212,16 @@ function VintageCohortTable({ estudiosSel }: { estudiosSel: Set<string> }) {
     const montoCamada = VINTAGE_MONTO_CAMADA[COHORTS[ri]];
     return row.map(v => v == null ? null : Math.round((v / 100) * montoCamada));
   });
-  const maxMonto = Math.max(...vintageData.flat().filter((v): v is number => v != null));
+  const displayData = unit === "pct" ? vintagePct : vintageData;
+  const maxVal = Math.max(...displayData.flat().filter((v): v is number => v != null));
 
-  function formatMonto(v: number): string {
-    return `${v}M`;
+  function formatValue(v: number): string {
+    return unit === "pct" ? `${v}%` : `${v}M`;
   }
 
   function cellColor(v: number | null) {
     if (v == null) return { backgroundColor: "transparent" };
-    const alpha = Math.min(0.85, 0.12 + (v / maxMonto) * 0.73);
+    const alpha = Math.min(0.85, 0.12 + (v / maxVal) * 0.73);
     return { backgroundColor: `rgba(16,185,129,${alpha})`, color: alpha > 0.45 ? "#fff" : "#065F46" };
   }
 
@@ -1228,14 +1230,23 @@ function VintageCohortTable({ estudiosSel }: { estudiosSel: Set<string> }) {
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <div>
           <h3 className="text-sm font-semibold text-foreground">Recupero por camada (vintage / cohorte)</h3>
-          <p className="text-[12px] text-muted-foreground mt-0.5">Millones de pesos recuperados, acumulado por camada de originación, a 3, 6, 12 y 18 meses transcurridos</p>
+          <p className="text-[12px] text-muted-foreground mt-0.5">{unit === "pct" ? "Porcentaje recuperado sobre la cartera asignada, acumulado por camada de originación, a 3, 6, 12 y 18 meses transcurridos" : "Millones de pesos recuperados, acumulado por camada de originación, a 3, 6, 12 y 18 meses transcurridos"}</p>
         </div>
-        <div className="flex items-center gap-1 bg-muted/60 border border-border rounded-lg p-1">
-          {(["acumulado", "comparativo"] as const).map(m => (
-            <button key={m} onClick={() => setMode(m)} className="px-2.5 py-1 rounded-md text-[12px] font-medium capitalize transition-colors" style={{ backgroundColor: mode === m ? "var(--card)" : "transparent", color: mode === m ? "#1755D4" : "var(--muted-foreground)" }}>
-              {m}
-            </button>
-          ))}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1 bg-muted/60 border border-border rounded-lg p-1">
+            {(["monto", "pct"] as const).map(u => (
+              <button key={u} onClick={() => setUnit(u)} className="px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors" style={{ backgroundColor: unit === u ? "var(--card)" : "transparent", color: unit === u ? "#1755D4" : "var(--muted-foreground)" }}>
+                {u === "monto" ? "Monto" : "%"}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1 bg-muted/60 border border-border rounded-lg p-1">
+            {(["acumulado", "comparativo"] as const).map(m => (
+              <button key={m} onClick={() => setMode(m)} className="px-2.5 py-1 rounded-md text-[12px] font-medium capitalize transition-colors" style={{ backgroundColor: mode === m ? "var(--card)" : "transparent", color: mode === m ? "#1755D4" : "var(--muted-foreground)" }}>
+                {m}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -1257,11 +1268,11 @@ function VintageCohortTable({ estudiosSel }: { estudiosSel: Set<string> }) {
                 <tr key={c}>
                   <td className="px-2 py-1.5 text-[12px] font-medium text-foreground whitespace-nowrap">{c}</td>
                   {MONTHS.map((_, ci) => {
-                    const v = vintageData[ri][ci];
+                    const v = displayData[ri][ci];
                     return (
                       <td key={ci} className="text-center rounded-md" style={{ minWidth: 40 }}>
                         <div className="rounded-md py-1.5 text-[11px] font-mono font-semibold" style={cellColor(v)}>
-                          {v != null ? formatMonto(v) : "—"}
+                          {v != null ? formatValue(v) : "—"}
                         </div>
                       </td>
                     );
@@ -1276,15 +1287,15 @@ function VintageCohortTable({ estudiosSel }: { estudiosSel: Set<string> }) {
           <BarChart
             data={MONTHS.map((m, ci) => {
               const row: Record<string, any> = { mes: m };
-              COHORTS.forEach((c, ri) => { row[c] = vintageData[ri][ci]; });
+              COHORTS.forEach((c, ri) => { row[c] = displayData[ri][ci]; });
               return row;
             })}
             margin={{ top: 5, right: 5, bottom: 0, left: -18 }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
             <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} tickFormatter={v => formatMonto(v)} />
-            <Tooltip contentStyle={{ fontSize: 11, border: "1px solid #E5E7EB", borderRadius: 8 }} formatter={(v: number) => formatMonto(v)} />
+            <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} tickFormatter={v => formatValue(v)} />
+            <Tooltip contentStyle={{ fontSize: 11, border: "1px solid #E5E7EB", borderRadius: 8 }} formatter={(v: number) => formatValue(v)} />
             {COHORTS.map((c, i) => (
               <Bar key={c} dataKey={c} fill={VINTAGE_PALETTE[i % VINTAGE_PALETTE.length]} radius={[4, 4, 0, 0]} />
             ))}
