@@ -1,0 +1,249 @@
+(Transcribed by TurboScribe. Go Unlimited to remove this message.)
+
+Este es el asigno de un sector perdido, porque es de otro lado. Y aquí tengo, y me voy listando todo. Entonces, este es mi workflow, yo aquí siempre veo todos mis casos.
+
+Todo lo que tenga que estar atrasado. Y después, ¿vale? Uno podría, yo esto por ejemplo, cualquier acción, ¿vale? Cualquier acción importante te entra aquí automáticamente. Todo lo que la Claudia controla como abogada, entra aquí por default.
+
+Ni siquiera lo tiene que recordar la Claudia. Si hay un caso en el cual se proveyó la demanda, ¿quién tiene la prioridad? Nosotros. Si tienen la prioridad nosotros, automáticamente aparece aquí.
+
+No hay quien ni siquiera lo mira. Tocan la prioridad nosotros. Hoy el caso, derechamente, registraron oposición al tiro.
+
+¿Qué nos toca a nosotros? Fuerzas Públicas. Solicitar Fuerzas Públicas. ¿Vamos a solicitar Fuerzas Públicas? ¿Qué es el paso que sigue? Solicitar Fuerzas Públicas.
+
+¿Qué te va a aparecer acá en el tiro? ¿Los que tienen? O sea, que se vaya subiendo, se vaya alimentando solo. Solo. En la acción podemos pasar, pero en el truco no.
+
+En las novedades. Porque en las novedades, cuando va y aparece la oposición al tiro, ¿vale? Eso parece novedad. Oposición al tiro.
+
+Entonces, ¿nos toca esto ahora? ¡Pum! Fuerzas Públicas. Eso es novedad, al final y cabo. ¿Se entiende o no? Sí.
+
+Eso es lo que tenemos que construir. Entonces, realmente es un workflow que tiene todo. Y vamos registrando masivamente.
+
+Entonces, no es uno a uno. O sea, lo puedo hacer uno a uno también. Pero la idea de esto es que, en realidad, todo lo escrito lo haga en la herramienta.
+
+Solamente requiere la visación de nuestro procurador. Nuestro procurador visa. ¡Pum! Se va.
+
+¿Cuál es el nivel de detalle que tienen que tener ustedes respecto de una causa, por ejemplo, para poder gestionarla? Porque lo que dice Jorge, en el contexto, son 10 causas. Se agrupan. Son todas de una misma categoría.
+
+Las acciones tienen un regla de negocio y todo. Pero se ejecuta una acción automática masiva y pasan cosas de forma masiva. Se genera un documento de forma masiva y ya.
+
+Pero ¿ustedes no necesitan revisar algún detalle de la causa, cosas específicas? Porque si es así, claro. Puede estar la opción de verla. Pero ese botón ya lo tenemos.
+
+Hoy en día ya puede verlo. Cuando yo voy a ver el juicio, en la herramienta. Entiendo que cuando tú ves ahí el juicio, uno se va a ver el construido.
+
+Ahí viene todo. Si quieren ver el juicio en particular, ven ahí el detalle completo. O sea, meten al historial.
+
+Entonces, es un botón más, más. Pero también pueden echar a ver uno a uno. Pues la relevancia de esto es la... No que vean uno a uno.
+
+No, en la automatización. En la automatización. Es que, por ejemplo, yo creo que hay escritos que sí se podrían hacer masivos.
+
+No sé, por ejemplo, las fuerzas públicas. Pero un previo a proveer, por ejemplo, es más complejo. Porque los previos no son todos iguales.
+
+Pero ¿cuántos previos tiene? ¿Cuántas categorías hay? Es que es distinto. Porque todo... Por ejemplo, un previo a proveer te puede decir aclare el monto de la demanda. ¿Y la respuesta es estándar? No.
+
+¿Qué cambia la respuesta? Depende de la demanda. Depende de la demanda, porque tienes que revisar. Pero eso, ¿depende de la demanda? Depende de la demanda.
+
+Que además, la demanda al final es más o menos similar, ¿o no? Sí, pero depende de la demanda y del pagareo. Porque te puede decir... Los previos son... Previo a proveer, no siendo parte del ejecutante, realizar una liquidación anticipada. Señale cuántas cuotas pagó, descuente los intereses.
+
+¿Qué es el saldo capital insoluto? ¿Y hay que intentar hacer una operación matemática para hacer eso? Entonces, ¿los previos son más complejos de hacer? Te lo preguntaba porque nosotros sí tenemos toda esa información. Entonces, tienes razón, Jorge. Nosotros podríamos crear distintas reglas de negocio para que cuando pase eso y mezcle dos contenidos que nosotros ya tenemos, entonces haz esto.
+
+Anda acá, anda... No es que no se pueda. Es más complejo. Nosotros más directos desde allá.
+
+Claro, porque las fuerzas públicas o las designaciones de martillero... ¿En qué te puedes fijar? ¿Que si tiene exhorto o no tiene exhorto? Porque si tiene exhorto, tienes que pedir un escrito que es un exhorto para retiro. Ahora sí, con esto solucionamos el 80-20. Y esos son escritos más masivos.
+
+No, no, eso ya es relevante. Pero también quiero que se haga el otro. O sea, el otro puede quedar en la secundaria básica, porque quiero ya que vea el resultado.
+
+Pero no es complejo. Para allá lo entrenamos. Les decimos, oye, si hay que hacer toda esta casuística que vos me dices que se nos lo robinan, ¿cuántas casuísticas serán? ¿Cien? ¿Mil? Las que sean, da lo mismo.
+
+Entonces, perfecto. Ponemos la lógica. Y además que siempre es una propuesta.
+
+Esto nunca va a ser una personalización de ustedes. Esto nunca... Ya definimos que jamás va a ser algo solo. Es solamente facilitarles vuestro rol.
+
+¿Vale? Automatizárselo además. Porque lo que estamos buscando con esto, para que también todos lo entendamos de esta forma, es que este equipo vaya creciendo en términos de negocios, pero no de headcount. No de los bolsos.
+
+Que seamos nosotros mismos. Más, si crece diez bolsos, tendríamos uno más. Entonces vamos a tener la capacidad de administrar fácilmente 5.000 caos a caos.
+
+Porque tiene un panel global de herramientas que potencian al máximo la relación nuestra, digamos. Ustedes. Por ejemplo, eso que comentabas tú de los receptores.
+
+Es una ayuda que sirve bien. O sea, pinchar todo lo que es Santiago. ¿Sabés qué? Ya, esto se va desde el receptor.
+
+Pinchar lo que se va, porque nosotros podemos dar las direcciones de los receptores con los cuales nosotros trabajamos. Entonces, si eso lo va a hacer y te va a llenar una planilla que nosotros llenamos para encargarle donde va la patente del tribunal. Buenísimo.
+
+Porque lo pincháis y que se dispare todo. Ellos van a estar listos y les van a dar una ficha completa con todos los autoductos. Pero aquí también, esa toma de decisión que yo te digo.
+
+Por eso es que paso a paso. ¿Verdad? Este workflow, más que un workflow, este listado de tareas pendientes que agrupa las novedades del tribunal. Digamos, algún tipo importante de instrucción que le dé la jefa, etc.
+
+Todo aquí. Y el objetivo del día sería dejar esto vacío. Porque el otro día van a enchar.
+
+Todo el día están novedades. O están casos en rojo. O lo que sea.
+
+Toda esta mirada que está acá, particularmente, es mi bandeja de gestión. Y si yo tengo que gestionarlo, sí o sí, masivamente. Sí o sí.
+
+Entonces, de los 10 actuales, estoy inventando, puede que sean 15, puede que sean 20, no tengo idea. Pero de los 10 actuales que el Procurador tiene incidencia en las etapas de un juicio. Tú dices que el más complejo es el... El previo.
+
+O sea, el previo. O sea, no sé si sea el más complejo, pero... Hay que tener más detalle. Pero aún así hay una gran mayoría de resoluciones que son más o menos similares.
+
+Mucho más tiempo, probablemente. Esas reglas las tienen que levantar. Tienen que levantar muy bien esas reglas porque, generalmente, los lados de esto tienen las respuestas.
+
+Dar la respuesta, ¿cierto? Dar la respuesta que podrá ser estándar, podrá variar por tribunal. Esa es parte de lo que tenemos que ver. Y eso lo van a saber solo los valentes.
+
+Por ejemplo, ustedes intentan con el tribunal... Ah, ok, con el tribunal A, pero hay un tipo de respuesta A para esa acción, digamos. Y te van a mandar una propuesta. Y esa propuesta, para efectos prácticos, tú la revisas, te cuadra, sí, acepta.
+
+Pum, se va. Si no te cuadra, yo la he visto ahí mismo. Y la puedo ajustar.
+
+Yo lo miro y no sé qué más, esto no me hizo sentido. Pronto le cambio este tema, aquí, allá, corregido. Ahora sí me hace sentido.
+
+Ah, ok, ahora sí acepto y se va. Eso se puede hacer en el caso que planteaste tú de poder... Claro, ok. Entonces le podías hacer ciertos retoques y tampoco va a ser preciso, preciso.
+
+Pero que te explique la propuesta del 80-20 del concepto. Claro, como lo que hizo el Marcelo para las demandas. Que nosotros corregíamos ahí mismo y... Entonces corregí aquí mismo, claro, ¿leí todo? Bueno.
+
+No está justo, no, porque por tu criterio o lo que sea. Entonces, ah, yo aprendo después de eso, porque aquí hay un caso. A partir de este caso, pum, particularmente que es el predio proveer.
+
+Esto, la primera pregunta, para tomar la decisión del predio proveer... Hay algo importante que me decía, que es relevante de este frijol. ¿Qué necesito yo de información para construir el predio proveer? O sea, lo que también está disponible. ¿Qué necesitas? Pagaré la cartola.
+
+Porque hasta ese momento va a estar la pura demanda. La demanda al pagarle la cartola. Claro.
+
+O sea, los documentos que se acompañan con la... Y esos son los documentos que se van a acompañar con el escrito que se cumple al ordenado. Pero eso ya está cargado ya. Pero ¿por qué dice eso? Ya, hasta ese momento ya está cargado.
+
+Entonces vaya a ver el juicio primero. Porque hasta ese momento, hasta antes del predio, no vamos a tener los documentos. Porque los documentos nosotros los acompañamos con la demanda.
+
+Con la demanda. Entonces vamos a tener esa información. Claro.
+
+Y esa información, esa información probablemente sea la que permita contestar ese predio. Incluso el que plantea arruinar, desmenuzar la deuda con la cartola y con el saldo insoluto, se podría ya determinar y poder responder y cumplir el ordenado. Cumplir el ordenado es el escrito que hay que ingresar a consecuencia del predio.
+
+Entonces le dicen así, mire, previo a resolver su demanda, yo necesito que usted me aclare este punto. Entonces ahí uno presenta un cumplir el ordenado aclarándose el punto. Esa es la... Jorge, déjame entender una cosa de lo que estabais diciendo, para que lo socialicemos.
+
+Generar un escritorio y una bandeja de novedades y tareas por hacer, ¿verdad? Muchos to-do, ¿verdad? Con distintas reglas de priorización, ¿verdad? Y con una regla de plazo, básicamente, ¿verdad? Lo que va como fifo, lifo, no sé. Ahí hay que definir cómo... Yo no sé hoy día cómo usted ordena el trabajo de hoy día. Me imagino que es lo que tengo más atrasado, es lo que me dedico.
+
+Y lo otro que está en amarillo lo dejaré a mañana hasta que saque lo rojo y tomaré lo amarillo. Y después, bueno, si con lo verde, así, con los colores. Dejarla vacía y que cada ítem tenga acciones.
+
+Tenga acciones automáticas, masivas, ¿verdad? Y que vaya eliminándose y vaya pasando de etapa. Y al final después de eso, bueno, seguirán llegando más novedades. Seguirán llegando más... ¿Algo así te imaginabas tú? Bueno, es como yo me lo imagino.
+
+Porque yo tengo dos sombreros. Yo tengo el sombrero, digamos, del estudio jurídico. Y tengo el sombrero de Fidel, porque quiero que esto se comercialice después.
+
+Esta es una verdad, esta sé que es la misma. No, para que no quede tan viejo. Para que no quede tan chueca.
+
+Todo esto es la pantalla. Toda la pizarra es la pantalla. El panel de la romina.
+
+¿Vale? Como yo me lo imagino. Hay elementos que aquí son súper importantes. Lo primero, en base a lo que estamos acostumbrados.
+
+Nosotros hoy día podríamos ver... Aquí está mi cartera total. Son todos... Este es el perfil romina. Vamos a iniciar con la romina.
+
+Aquí está mi cartera total. Mi cartera total. Empecemos primero con el semáforo.
+
+Que es una variable importante, porque es una SLA. En realidad, tengo efectos prácticos de mi cartera. Que son... ¿Cuántos son? Como 770.
+
+Te lo voy a render a mi para hacer números más fáciles. Tengo, en realidad, el cumplimiento en estándar. Ahora, lo de verde es interno.
+
+Entonces, yo invierto en la cantería. Para la semántica, nomás. La voy a poner dentro de estándar.
+
+Porque está... Sabemos que es el verde. Pero como lo queremos comercializar, nosotros podemos usar nuestros criterios. En realidad, son nuestros ciertos casos.
+
+Y hay el 80%. Bueno. Ese es un dato.
+
+Por ejemplo, la romina también se tiene que comparar. ¿Ese 80% es bueno o es malo? Por ejemplo, ¿a Simón le interesa que en realidad le diga, por ejemplo, que vas mejor en un 3% respecto a la media del resto de los curadores? ¿O que le diga, va peor en rojo, va a caer un 3% respecto a la media? Por ejemplo. La misma lógica con... Amarillo y rojo.
+
+Están... ¿Cómo le podríamos llamar? Este fuera de estándar, ¿está claro? Fuera de estándar. Y estos que están a punto, ¿cómo le llamaríamos? ¿Cuáles son los...? O límite de estándar. Límite, porque amarillo no se dice rojo.
+
+Los amarillos son en realidad verdes. Pero que están a punto del C. Por eso te decía yo, el límite. Están en el límite.
+
+¿Puede pasar a...? Digo, el límite porque puede ser un rojo que va a pasar a verde, pero todavía no ha pasado. O puede ser un verde. Esto es solamente unidireccional.
+
+No, esto es solamente unidireccional. Esto va a estar... Al portas de pasar a rojo. Es verde al portas de pasar a rojo.
+
+Entonces... precaución. No sé. ¿Alerta? Ah, alerta.
+
+Bueno. Alerta. Es que alerta también está... Si le ponemos alerta, esto ya es un caso crítico.
+
+Tiene que ser un... Es como un paso... Aguanta lo mismo, Darío. Después nos va a volver el tiempo yo. Y aquí lleva 100 casos.
+
+Y en realidad es un 10%. Y acá también tiene 100 casos. Y es un 10%.
+
+Con eso sale... No te digo que no voy a hacer con colores. No, porque el criterio de... Nosotros usamos colores. Pero esta institución... Por estándar.
+
+Para que sea más vendible. Todos sabemos que... Rojo es colores. Parcialmente estándar.
+
+Parcialmente del estándar. No podemos más. Golden beat latino.
+
+No nos hemos pegado en esa línea. Por lo tanto... Y lo relevante de eso es que no solamente aparezca esto. Porque el cuerpo que creo yo que es lo más importante.
+
+Aquí está el cuerpo de cualquier tuga línea. Que es el panel. Si yo soy la romina y pincho me van a tirar en mi fuera de estándar.
+
+Automáticamente me van a tirar en mi workflow. En mi workflow. 100 casos.
+
+Rojo es color rojo. Ahí porque yo soy la selección de todos los rojos. Voy chequeando.
+
+Esto es como la mirada... Ya la tenemos esa. Pronto miro todo. Perfecto.
+
+Si pincho los caballillos. Como hicimos. Y lo mismo con los de dentro.
+
+Yo puedo mirar todo y me pegue así. Si me entran novedades... Ese es como el sistema de tramitación tradicional. Aquí yo hago la gestión.
+
+Lo importante es que... Si yo voy a tramitar uno acá. Todas las acciones sean automáticas. El próximo paso que yo voy a hacer.
+
+La llama y lo proponga. Y yo lo valí. Si nosotros vamos gestionando al revés.
+
+Si nosotros vamos gestionando al revés. Por novedades diarias. Y en forma masiva.
+
+Esto va a ir tendiendo a cero. Por responsabilidad nuestra. Va a empezar a quedar en rojo solamente por responsabilidad de terceros.
+
+Por ejemplo. No hay más datos para hacer búsqueda negativa. No hay más.
+
+O no hay receptor en una zona. Cosas que ya son algeras. Después tenemos que tomar esos paquetes y ver cómo los vamos a ir ordenando.
+
+Pidiendo designación. Ya no van a empezar a haber por gestión nuestra. Y de hecho más.
+
+Esos casos, si no hay más posibles de gestión. Yo particularmente en forma interna. Por ejemplo.
+
+Convicto bueno. Desasignado. Se los desasigno temporal.
+
+Al procurador. Porque no hay nada más que hacer. Se los desasigno al procurador.
+
+Y los tengo en un bolsón. Y eso yo lo negocio por ejemplo. Con el cliente.
+
+Porque no tengo nada más que hacer. Si nadie dice no. Apóyame otro dato.
+
+Cobrable. Ah perfecto. Entonces en este caso.
+
+Voy a hacer algo. Entonces. Llegaron los días.
+
+Voy a poner. Vayamos ordenando el flujo. La primera actuación de un juicio.
+
+¿Cómo lo tienes tú pensado hoy día? De que cuando llegue un... Llegó en serio. ¿Ya? ¿Se refiere a que llega la asignación del mandante? No, para confeccionar la demanda. Porque la primera acción es que hay que armar la demanda.
+
+Y presentarla. Vamos a buscar el pagaré, la cartola, el saldo. Y el mandato si es que hay.
+
+Y lo leemos. Y confeccionamos los campos de la demanda. Tú hoy día vas.
+
+Porque yo hoy día. Yo me responsabilizo de mí. Hoy día voy a hacer.
+
+Aquí están los distintos botones. Y el primer botón va a ser aquí. Yo soy Romina.
+
+Confección de demanda. Entonces se supone. Que yo, yo Romina.
+
+Fecho el Excel. ¿Qué hago yo ahí? Subo el Excel con mis casos. Subo el Excel con mis casos.
+
+Más los respaldos de cada caso. Lo pongo a ejecutar. Y si son 100 casos.
+
+Me genera la hacienda de demanda. Eso es lo que dice pasar. Entonces este es mi módulo.
+
+Que está acá. Yo Romina. Ingreso. 
+
+Cargo en un formato que tú defines. ¿Vale? Un formato con todos los datos necesarios. Evidentemente de la causa.
+
+Lo prepararía la Romina. Su demanda. Se le adjuntan los datos correspondientes.
+
+A cada caso. Pagaré cartola. El saldo.
+
+La pregunta. La IA lo hace. O tú lo lees y lo digitas.
+
+Ahora lo hizo la IA. ¿Y cómo quedó? Si nos da confianza eso. Entonces eso mismo lo pescamos.
+
+Entra. Yo tengo lo que se demoró en la Romina. En armar el Excel.
+
+Es lo que se demoró en construir todas las demandas de la Romina. Que son 100. De hecho el Excel nosotros no lo armamos.
+
+Eso lo hizo todo la IA. Bueno, si lo hizo la IA. Mejorado.
+
+Si nosotros solo nos fijamos, por ejemplo, en qué nos arrojaba como un error.
+
+(Transcribed by TurboScribe. Go Unlimited to remove this message.)
