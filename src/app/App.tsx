@@ -4,11 +4,12 @@ import {
   Bell, Search, AlertCircle, Filter, MoreHorizontal, Settings,
   Phone, TrendingUp, Target, Gavel, X, Download, PlusCircle,
   RefreshCw, User, LogOut, DollarSign, MessageSquare, Eye,
-  ChevronRight, Activity, Shield, BookOpen, Building2, Users, Brain
+  ChevronRight, Activity, Shield, BookOpen, Building2, Users, Brain, Zap
 } from "lucide-react";
 import Login, { PROFILES, type LoginUser, type ProfileId } from "./Login";
 import MandanteView, { InteligenciaCarteraView, abrirReporteEjecutivo } from "./MandanteView";
 import { MiEscritorio, MisCausas, MisDocumentos, MisMetricas } from "./ProcuradorView";
+import AccionesMasivas from "./AccionesMasivas";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
@@ -169,6 +170,7 @@ const NAV = [
   { id: "micartera", label: "Mi Cartera", icon: Briefcase, badge: 12 },
   { id: "causas", label: "Causas", icon: Scale },
   { id: "cobranza", label: "Cobranza", icon: Phone },
+  { id: "acciones-masivas", label: "Acciones masivas", icon: Zap },
   { id: "documentos", label: "Documentos", icon: FileText },
   { id: "gastos", label: "Gastos", icon: Receipt },
   { id: "reportes", label: "Reportes", icon: BarChart2 },
@@ -187,7 +189,7 @@ const NAV_ABOGADO = [
   { id: "mismetricas", label: "Mis Métricas", icon: BarChart2 },
 ];
 
-const HIDDEN_FOR_MANDANTE = new Set(["micartera", "causas", "cobranza", "documentos"]);
+const HIDDEN_FOR_MANDANTE = new Set(["micartera", "causas", "cobranza", "documentos", "acciones-masivas"]);
 
 function Sidebar({ active, onNav, user, onLogout }: { active: string; onNav: (id: string) => void; user: LoginUser; onLogout: () => void }) {
   const profile = PROFILES.find(p => p.id === user.profile)!;
@@ -1109,6 +1111,7 @@ const META: Record<string, { title: string; sub: string }> = {
   documentos: { title: "Documentos", sub: "Repositorio documental y escritos" },
   gastos: { title: "Gastos judiciales", sub: "Control de costos y rendiciones" },
   reportes: { title: "Reportes y analítica", sub: "Indicadores, tendencias y rankings" },
+  "acciones-masivas": { title: "Acciones masivas", sub: "Ejecución supervisada de acciones en lote" },
   "inteligencia-cartera": { title: "Inteligencia de Cartera", sub: "Resumen IA, recomendaciones y proyección de recupero" },
   consultas: { title: "Consultas", sub: "Comunicación entre roles" },
   admin: { title: "Administración", sub: "Configuración y parametrización" },
@@ -1140,11 +1143,12 @@ export default function App() {
     <div className="flex h-screen w-full overflow-hidden bg-background">
       <Sidebar active={view} onNav={setView} user={user} onLogout={() => setUser(null)} />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        {!isAbogado && !(isMandante && view === "dashboard") && <TopBar title={title} sub={sub} user={user} />}
+        {!isAbogado && !(isMandante && view === "dashboard") && view !== "acciones-masivas" && <TopBar title={title} sub={sub} user={user} />}
         {view === "dashboard" && (isMandante ? <MandanteView onOpenAnalisisAvanzado={() => setView("inteligencia-cartera")} /> : <Dashboard />)}
         {view === "micartera" && <MiCartera />}
         {view === "causas" && <Causas />}
         {view === "cobranza" && <Cobranza />}
+        {view === "acciones-masivas" && <AccionesMasivas />}
         {view === "reportes" && <Reportes />}
         {view === "inteligencia-cartera" && <InteligenciaCarteraView />}
         {view === "documentos" && <Placeholder title="Gestión documental" icon={FileText} desc="Generación masiva, versionado, firma electrónica y presentación automatizada de escritos en PJUD." />}
