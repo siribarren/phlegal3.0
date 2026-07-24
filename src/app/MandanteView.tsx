@@ -1680,7 +1680,7 @@ function IACopilotPanel({ onClose }: { onClose: () => void }) {
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
   const [messages, setMessages] = useState<ChatMsg[]>([
-    { role: "assistant", text: "Hola, soy el asistente IA de PHLegal 3.0. Puedo ayudarle a analizar el estado de su cartera, comparar estudios o revisar rentabilidad por causa. ¿Qué desea consultar?" },
+    { role: "assistant", text: "Hola, soy el asistente IA de Ignis. Puedo ayudarle a analizar el estado de su cartera, comparar estudios o revisar rentabilidad por causa. ¿Qué desea consultar?" },
   ]);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -1705,7 +1705,7 @@ function IACopilotPanel({ onClose }: { onClose: () => void }) {
           <Sparkles className="w-3.5 h-3.5 text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-foreground">Asistente IA · PHLegal 3.0</p>
+          <p className="text-xs font-semibold text-foreground">Asistente IA · Ignis</p>
           <p className="text-[11px] text-muted-foreground">Consultas sobre su cartera</p>
         </div>
         <button
@@ -2424,7 +2424,7 @@ function generarReporteEjecutivoHTML(): string {
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<title>Reporte Ejecutivo · PHLegal 3.0</title>
+<title>Reporte Ejecutivo · Ignis</title>
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; color: #111827; background: #F3F4F6; }
@@ -2477,7 +2477,7 @@ function generarReporteEjecutivoHTML(): string {
       <div class="brand">
         <div class="logo"></div>
         <div>
-          <h1>Reporte Ejecutivo · PHLegal 3.0</h1>
+          <h1>Reporte Ejecutivo · Ignis</h1>
           <p>Cartera de cobranza judicial — Tanner Servicios Financieros</p>
         </div>
       </div>
@@ -2523,7 +2523,7 @@ function generarReporteEjecutivoHTML(): string {
       </div>
     </div>
 
-    <div class="footer">Generado automáticamente por PHLegal 3.0 · datos simulados con fines demostrativos · ${fecha}</div>
+    <div class="footer">Generado automáticamente por Ignis · datos simulados con fines demostrativos · ${fecha}</div>
   </div>
   <div class="toolbar"><button onclick="window.print()">Guardar como PDF (Ctrl/Cmd + P)</button></div>
 </body>

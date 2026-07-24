@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import {
   LayoutDashboard, Briefcase, Scale, FileText, Receipt, BarChart2,
   Bell, Search, AlertCircle, Filter, MoreHorizontal, Settings,
-  Phone, TrendingUp, Target, Gavel, X, Download, PlusCircle,
+  Phone, TrendingUp, Target, Gavel, Flame, X, Download, PlusCircle,
   RefreshCw, User, LogOut, DollarSign, MessageSquare, Eye,
   ChevronRight, Activity, Shield, BookOpen, Building2, Users, Brain, Zap
 } from "lucide-react";
@@ -202,12 +202,12 @@ function Sidebar({ active, onNav, user, onLogout }: { active: string; onNav: (id
       {/* Logo */}
       <div className="px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "#1755D4" }}>
-            <Gavel className="w-4 h-4 text-white" />
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg, #FF7A1A 0%, #C4270E 100%)" }}>
+            <Flame className="w-4 h-4 text-white" />
           </div>
           <div>
-            <p className="text-white text-sm font-semibold tracking-tight">PHLegal 3.0</p>
-            <p className="text-[11px] font-mono tracking-widest" style={{ color: "rgba(255,255,255,0.3)" }}>CRM JUDICIAL</p>
+            <p className="text-white text-sm font-semibold tracking-tight">Ignis</p>
+            <p className="text-[11px] font-mono tracking-widest" style={{ color: "rgba(255,255,255,0.3)" }}>INTELIGENCIA LEGAL</p>
           </div>
         </div>
       </div>
@@ -1124,6 +1124,8 @@ const META: Record<string, { title: string; sub: string }> = {
 export default function App() {
   const [user, setUser] = useState<LoginUser | null>(null);
   const [view, setView] = useState("dashboard");
+  const [causaRolFoco, setCausaRolFoco] = useState<string | null>(null);
+  const [causasKey, setCausasKey] = useState(0);
   const isMandante = user?.profile === "mandante";
   const isAbogado = user?.profile === "abogado";
   const { title, sub } = view === "dashboard" && isMandante
@@ -1135,13 +1137,27 @@ export default function App() {
     setView(u.profile === "abogado" ? "miescritorio" : "dashboard");
   }
 
+  function handleNav(id: string) {
+    if (id === "miscausas") {
+      setCausaRolFoco(null);
+      setCausasKey(k => k + 1);
+    }
+    setView(id);
+  }
+
+  function abrirCausaDesdeEscritorio(rol: string) {
+    setCausaRolFoco(rol);
+    setCausasKey(k => k + 1);
+    setView("miscausas");
+  }
+
   if (!user) {
     return <Login onLogin={handleLogin} />;
   }
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
-      <Sidebar active={view} onNav={setView} user={user} onLogout={() => setUser(null)} />
+      <Sidebar active={view} onNav={handleNav} user={user} onLogout={() => setUser(null)} />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {!isAbogado && !(isMandante && view === "dashboard") && view !== "acciones-masivas" && <TopBar title={title} sub={sub} user={user} />}
         {view === "dashboard" && (isMandante ? <MandanteView onOpenAnalisisAvanzado={() => setView("inteligencia-cartera")} /> : <Dashboard />)}
@@ -1155,8 +1171,8 @@ export default function App() {
         {view === "gastos" && <Placeholder title="Gastos judiciales" icon={Receipt} desc="Solicitud, aprobación, rendición y control de reembolsos de gastos asociados a receptores y trámites." />}
         {view === "consultas" && <Placeholder title="Consultas y mensajería" icon={MessageSquare} desc="Comunicación bidireccional entre abogados, procuradores, ejecutivos y mandantes con trazabilidad completa." />}
         {view === "admin" && <Placeholder title="Administración del sistema" icon={Settings} desc="Usuarios, roles, mandantes, catálogos, SLA, reglas de priorización e integraciones." />}
-        {isAbogado && view === "miescritorio" && <MiEscritorio onNavigate={setView} email={user.email} />}
-        {isAbogado && view === "miscausas" && <MisCausas email={user.email} />}
+        {isAbogado && view === "miescritorio" && <MiEscritorio onNavigate={setView} onAbrirCausa={abrirCausaDesdeEscritorio} email={user.email} />}
+        {isAbogado && view === "miscausas" && <MisCausas key={causasKey} email={user.email} initialRol={causaRolFoco} />}
         {isAbogado && view === "misdocumentos" && <MisDocumentos email={user.email} />}
         {isAbogado && view === "mismetricas" && <MisMetricas email={user.email} />}
       </div>
