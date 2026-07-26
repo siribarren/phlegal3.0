@@ -197,14 +197,14 @@ export default function Login({ onLogin }: { onLogin: (user: LoginUser) => void 
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-200">{profile === "abogado" ? "Usuario" : "Correo"}</label>
+                    <label className="text-sm font-medium text-slate-200">Correo</label>
                     <div className="relative">
                       <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                       <input
-                        type={profile === "abogado" ? "text" : "email"}
+                        type="email"
                         value={email}
                         onChange={e => setEmail(e.target.value)}
-                        placeholder={profile === "abogado" ? "usuario" : "correo@ignis.legal"}
+                        placeholder={profile === "abogado" ? "usuario@phlegal.cl" : "correo@ignis.legal"}
                         autoComplete="username"
                         className="h-11 w-full rounded-lg border border-white/10 bg-slate-950/70 pl-10 pr-3 text-sm text-white placeholder:text-slate-500 focus:border-orange-400/60 focus:outline-none focus:ring-1 focus:ring-orange-400/30"
                       />
@@ -234,7 +234,7 @@ export default function Login({ onLogin }: { onLogin: (user: LoginUser) => void 
 
                   {profile === "abogado" && (
                     <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
-                      Usa el usuario que te asignó tu estudio (ej. iniciales + apellido). Verás solo tus propias causas.
+                      Usa tu correo @phlegal.cl (ej. iniciales + apellido). Verás solo tus propias causas.
                     </div>
                   )}
 

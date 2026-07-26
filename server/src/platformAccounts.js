@@ -8,6 +8,8 @@
 // colisiona (el primero que matchee gana). Con pocos procuradores es
 // improbable; si llega a pasar, hay que desambiguar a mano.
 
+const DOMINIO_PLATAFORMA = "phlegal.cl";
+
 export function derivarUsername(nombreCompleto) {
   const partes = nombreCompleto.trim().split(/\s+/).filter(Boolean);
   if (partes.length === 0) return "";
@@ -17,6 +19,10 @@ export function derivarUsername(nombreCompleto) {
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase();
+}
+
+export function derivarEmailPlataforma(nombreCompleto) {
+  return `${derivarUsername(nombreCompleto)}@${DOMINIO_PLATAFORMA}`;
 }
 
 export function passwordPlataforma() {

@@ -9,7 +9,7 @@ import {
   isAccessTokenExpired,
 } from "./sessionStore.js";
 import { getSharedAccessToken } from "./sharedSession.js";
-import { derivarUsername, passwordPlataforma } from "./platformAccounts.js";
+import { derivarEmailPlataforma, passwordPlataforma } from "./platformAccounts.js";
 
 const SESSION_COOKIE = "phlegal_session";
 const COOKIE_OPTS = {
@@ -100,13 +100,13 @@ router.post("/procurador-login", async (req, res) => {
   try {
     const sharedToken = await getSharedAccessToken();
     const procuradores = await pjud.fetchProcuradores(sharedToken);
-    const usernameNormalizado = username.trim().toLowerCase();
-    const procurador = procuradores.find(p => derivarUsername(p.nombre) === usernameNormalizado);
+    const emailNormalizado = username.trim().toLowerCase();
+    const procurador = procuradores.find(p => derivarEmailPlataforma(p.nombre) === emailNormalizado);
     if (!procurador) {
       return res.status(401).json({ detail: "Usuario o contraseña incorrectos." });
     }
     const user = {
-      email: `${usernameNormalizado}@ignis.legal`,
+      email: emailNormalizado,
       nombre: procurador.nombre,
       roles: ["procurador"],
       estudioId: procurador.estudio_id,
