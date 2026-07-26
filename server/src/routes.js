@@ -8,6 +8,8 @@ import {
   deleteSession,
   isAccessTokenExpired,
 } from "./sessionStore.js";
+import { getSharedAccessToken } from "./sharedSession.js";
+import { derivarUsername, passwordPlataforma } from "./platformAccounts.js";
 
 const SESSION_COOKIE = "phlegal_session";
 const COOKIE_OPTS = {
@@ -27,6 +29,16 @@ async function requireSession(req, res, next) {
   const sessionId = req.cookies?.[SESSION_COOKIE];
   const session = sessionId ? await getSession(sessionId) : null;
   if (!session) return res.status(401).json({ detail: "No autenticado" });
+
+  if (session.platform) {
+    try {
+      req.accessToken = await getSharedAccessToken();
+      req.procuradorNombre = session.procuradorNombre;
+      return next();
+    } catch {
+      return res.status(502).json({ detail: "No fue posible conectar con PJUD" });
+    }
+  }
 
   if (!isAccessTokenExpired(session)) {
     req.accessToken = session.accessToken;
@@ -71,6 +83,46 @@ router.post("/login", async (req, res) => {
   }
 });
 
+// Login de cuentas de plataforma (una por procurador, ver
+// platformAccounts.js): no pegan contra PJUD con credenciales propias, sino
+// que validan contra la clave genérica de plataforma y quedan atadas al
+// procurador real cuyo nombre matchea el username derivado. Las causas se
+// consultan luego con la sesión compartida (sharedSession.js), filtradas
+// server-side por ese procurador — ver requireSession.
+router.post("/procurador-login", async (req, res) => {
+  const { username, password } = req.body ?? {};
+  if (!username || !password) {
+    return res.status(422).json({ detail: "username y password son requeridos" });
+  }
+  if (password !== passwordPlataforma()) {
+    return res.status(401).json({ detail: "Usuario o contraseña incorrectos." });
+  }
+  try {
+    const sharedToken = await getSharedAccessToken();
+    const procuradores = await pjud.fetchProcuradores(sharedToken);
+    const usernameNormalizado = username.trim().toLowerCase();
+    const procurador = procuradores.find(p => derivarUsername(p.nombre) === usernameNormalizado);
+    if (!procurador) {
+      return res.status(401).json({ detail: "Usuario o contraseña incorrectos." });
+    }
+    const user = {
+      email: `${usernameNormalizado}@ignis.legal`,
+      nombre: procurador.nombre,
+      roles: ["procurador"],
+      estudioId: procurador.estudio_id,
+    };
+    const sessionId = await createSession({
+      platform: true,
+      procuradorNombre: procurador.nombre,
+      user,
+    });
+    res.cookie(SESSION_COOKIE, sessionId, COOKIE_OPTS);
+    res.json({ user });
+  } catch {
+    res.status(502).json({ detail: "No fue posible validar la cuenta con PJUD." });
+  }
+});
+
 router.post("/logout", async (req, res) => {
   const sessionId = req.cookies?.[SESSION_COOKIE];
   if (sessionId) await deleteSession(sessionId);
@@ -87,7 +139,14 @@ router.get("/session", async (req, res) => {
 
 router.post("/causas", requireSession, async (req, res) => {
   try {
-    const data = await pjud.fetchListadoCausas(req.accessToken, req.body ?? {});
+    // Para cuentas de plataforma el filtro por procurador lo impone el
+    // servidor con el nombre de la sesión, ignorando lo que mande el
+    // cliente — así el filtro de la UI no puede usarse para ver causas de
+    // otro procurador.
+    const body = req.procuradorNombre
+      ? { ...(req.body ?? {}), procuradores: [req.procuradorNombre] }
+      : (req.body ?? {});
+    const data = await pjud.fetchListadoCausas(req.accessToken, body);
     res.json(data);
   } catch (err) {
     res.status(err.status ?? 502).json(err.body ?? { detail: "Error consultando causas" });
@@ -97,6 +156,9 @@ router.post("/causas", requireSession, async (req, res) => {
 router.get("/causas/:id", requireSession, async (req, res) => {
   try {
     const data = await pjud.fetchCausaDetalle(req.accessToken, req.params.id);
+    if (req.procuradorNombre && data?.procurador_nombre !== req.procuradorNombre) {
+      return res.status(404).json({ detail: "Causa no encontrada" });
+    }
     res.json(data);
   } catch (err) {
     res.status(err.status ?? 502).json(err.body ?? { detail: "Error consultando la causa" });
@@ -106,7 +168,8 @@ router.get("/causas/:id", requireSession, async (req, res) => {
 router.get("/procuradores", requireSession, async (req, res) => {
   try {
     const data = await pjud.fetchProcuradores(req.accessToken);
-    res.json(data);
+    const visibles = req.procuradorNombre ? data.filter(p => p.nombre === req.procuradorNombre) : data;
+    res.json(visibles);
   } catch (err) {
     res.status(err.status ?? 502).json(err.body ?? { detail: "Error consultando procuradores" });
   }

@@ -29,6 +29,18 @@ export async function login(username: string, password: string): Promise<ApiUser
   return data.user;
 }
 
+// Login de cuenta de plataforma (una por procurador, sin credenciales PJUD
+// propias) — ver server/src/platformAccounts.js.
+export async function loginProcurador(username: string, password: string): Promise<ApiUser> {
+  const res = await bffFetch("/procurador-login", { method: "POST", body: JSON.stringify({ username, password }) });
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.detail || `Error de login (${res.status})`);
+  }
+  const data = await res.json();
+  return data.user;
+}
+
 export async function logout(): Promise<void> {
   await bffFetch("/logout", { method: "POST" });
 }

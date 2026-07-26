@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Building2, TrendingUp, Scale, Phone, Flame, Lock, Mail, Check, ShieldCheck } from "lucide-react";
-import { login as apiLogin } from "../lib/api";
+import { loginProcurador } from "../lib/api";
 
 export type ProfileId = "mandante" | "abogado_jefe" | "abogado" | "ejecutivo";
 
@@ -69,7 +69,7 @@ export default function Login({ onLogin }: { onLogin: (user: LoginUser) => void 
       setLoading(true);
       setError(null);
       try {
-        const user = await apiLogin(email.trim(), password);
+        const user = await loginProcurador(email.trim(), password);
         onLogin({ profile, email: user.email, nombre: user.nombre });
       } catch (err) {
         setError(err instanceof Error ? err.message : "No fue posible iniciar sesión.");
@@ -197,14 +197,14 @@ export default function Login({ onLogin }: { onLogin: (user: LoginUser) => void 
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-200">Correo</label>
+                    <label className="text-sm font-medium text-slate-200">{profile === "abogado" ? "Usuario" : "Correo"}</label>
                     <div className="relative">
                       <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                       <input
-                        type="email"
+                        type={profile === "abogado" ? "text" : "email"}
                         value={email}
                         onChange={e => setEmail(e.target.value)}
-                        placeholder="correo@ignis.legal"
+                        placeholder={profile === "abogado" ? "usuario" : "correo@ignis.legal"}
                         autoComplete="username"
                         className="h-11 w-full rounded-lg border border-white/10 bg-slate-950/70 pl-10 pr-3 text-sm text-white placeholder:text-slate-500 focus:border-orange-400/60 focus:outline-none focus:ring-1 focus:ring-orange-400/30"
                       />
@@ -234,7 +234,7 @@ export default function Login({ onLogin }: { onLogin: (user: LoginUser) => void 
 
                   {profile === "abogado" && (
                     <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
-                      Este perfil se conecta a la Oficina Virtual PJUD con tu correo y contraseña reales.
+                      Usa el usuario que te asignó tu estudio (ej. iniciales + apellido). Verás solo tus propias causas.
                     </div>
                   )}
 
