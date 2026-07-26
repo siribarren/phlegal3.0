@@ -8,6 +8,7 @@
     "dev": "node --watch index.js"
   },
   "dependencies": {
+    "@upstash/redis": "1.35.5",
     "cookie-parser": "1.4.7",
     "cors": "2.8.5",
     "express": "4.21.2"

@@ -19,11 +19,13 @@ const COOKIE_OPTS = {
 
 export const router = Router();
 
+router.get("/health", (req, res) => res.json({ ok: true }));
+
 // Adjunta req.session y req.accessToken con un token válido (renovado si hacía
 // falta), o responde 401 si no hay sesión / el refresh falló.
 async function requireSession(req, res, next) {
   const sessionId = req.cookies?.[SESSION_COOKIE];
-  const session = sessionId ? getSession(sessionId) : null;
+  const session = sessionId ? await getSession(sessionId) : null;
   if (!session) return res.status(401).json({ detail: "No autenticado" });
 
   if (!isAccessTokenExpired(session)) {
@@ -33,7 +35,7 @@ async function requireSession(req, res, next) {
 
   try {
     const data = await pjud.refresh(session.refreshToken);
-    updateSessionTokens(sessionId, {
+    await updateSessionTokens(sessionId, {
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
       expiresIn: data.expires_in,
@@ -41,7 +43,7 @@ async function requireSession(req, res, next) {
     req.accessToken = data.access_token;
     next();
   } catch {
-    deleteSession(sessionId);
+    await deleteSession(sessionId);
     res.clearCookie(SESSION_COOKIE);
     res.status(401).json({ detail: "Sesión expirada" });
   }
@@ -55,7 +57,7 @@ router.post("/login", async (req, res) => {
   try {
     const data = await pjud.login(username, password);
     const user = userFromToken(data.access_token);
-    const sessionId = createSession({
+    const sessionId = await createSession({
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
       expiresIn: data.expires_in,
@@ -69,16 +71,16 @@ router.post("/login", async (req, res) => {
   }
 });
 
-router.post("/logout", (req, res) => {
+router.post("/logout", async (req, res) => {
   const sessionId = req.cookies?.[SESSION_COOKIE];
-  if (sessionId) deleteSession(sessionId);
+  if (sessionId) await deleteSession(sessionId);
   res.clearCookie(SESSION_COOKIE);
   res.json({ ok: true });
 });
 
 router.get("/session", async (req, res) => {
   const sessionId = req.cookies?.[SESSION_COOKIE];
-  const session = sessionId ? getSession(sessionId) : null;
+  const session = sessionId ? await getSession(sessionId) : null;
   if (!session) return res.status(401).json({ detail: "No autenticado" });
   res.json({ user: session.user });
 });

@@ -13,8 +13,6 @@ app.use(cors({ origin: FRONTEND_ORIGIN, credentials: true }));
 
 app.use("/bff", router);
 
-app.get("/bff/health", (req, res) => res.json({ ok: true }));
-
 app.listen(PORT, () => {
   console.log(`BFF Procurador escuchando en http://localhost:${PORT}`);
 });
