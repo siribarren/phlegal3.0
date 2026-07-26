@@ -190,6 +190,10 @@ async function carteraPorProcurador(token, procuradorNombre) {
   for (let page = 1; page <= MAX_PAGINAS; page++) {
     const data = await pjud.fetchListadoCausas(token, { procuradores: [procuradorNombre], page, page_size: PAGE_SIZE });
     const results = data.results ?? [];
+    if (page === 1) {
+      const nombresEnPagina = [...new Set(results.map(c => c.procurador_nombre))];
+      console.error("DEBUG carteraPorProcurador: pedido=", procuradorNombre, "total_api=", data.total, "resultados_pagina1=", results.length, "procuradores_distintos_en_pagina1=", nombresEnPagina.slice(0, 10));
+    }
     if (results.length === 0) break;
     for (const c of results) {
       // Si la API repite filas entre páginas (paginación sin orden estable),
