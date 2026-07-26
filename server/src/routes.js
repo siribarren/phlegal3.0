@@ -182,8 +182,8 @@ router.get("/procuradores", requireSession, async (req, res) => {
 // que /causas) y contando por color, en vez de mostrar la cartera de todo
 // el estudio.
 async function carteraPorProcurador(token, procuradorNombre) {
-  const PAGE_SIZE = 50; // mismo page_size por defecto que usa "Mis Causas" verificada
-  const MAX_PAGINAS = 200;
+  const PAGE_SIZE = 200;
+  const MAX_PAGINAS = 100; // salvaguarda: 100 * PAGE_SIZE = 20.000 causas por procurador
   const conteo = { verde: 0, amarillo: 0, rojo: 0, morado: 0, sin_gestion: 0 };
   const vistos = new Set();
 
@@ -198,9 +198,6 @@ async function carteraPorProcurador(token, procuradorNombre) {
     };
     const data = await pjud.fetchListadoCausas(token, body);
     const results = data.results ?? [];
-    if (page === 1) {
-      console.error("DEBUG carteraPorProcurador body=", JSON.stringify(body), "-> total_api=", data.total, "resultados=", results.length);
-    }
     if (results.length === 0) break;
     for (const c of results) {
       // Si la API repite filas entre páginas (paginación sin orden estable),
@@ -215,9 +212,10 @@ async function carteraPorProcurador(token, procuradorNombre) {
     if (results.length < PAGE_SIZE) break; // última página
   }
 
-  console.error("DEBUG carteraPorProcurador: pedido=", procuradorNombre, "total_deduped=", vistos.size, "primeros_causa_id=", [...vistos].slice(0, 8), "ultimos_causa_id=", [...vistos].slice(-8));
-
-  const totalFinal = conteo.verde + conteo.amarillo + conteo.rojo + conteo.morado + conteo.sin_gestion;
+  // "Tu cartera" son las causas en gestión activa (con semáforo asignado);
+  // las recién ingresadas sin semáforo (sin_gestion) quedan fuera del total
+  // y del %, aunque el conteo se guarda por si se necesita más adelante.
+  const totalFinal = conteo.verde + conteo.amarillo + conteo.rojo + conteo.morado;
   const pct = n => (totalFinal ? Math.round((n / totalFinal) * 1000) / 10 : 0);
   return {
     tipo: "procurador",
@@ -229,7 +227,7 @@ async function carteraPorProcurador(token, procuradorNombre) {
         porcentaje_amarillo: pct(conteo.amarillo),
         porcentaje_rojo: pct(conteo.rojo),
         porcentaje_morado: pct(conteo.morado),
-        porcentaje_sin_gestion: pct(conteo.sin_gestion),
+        porcentaje_sin_gestion: 0, // sin_gestion queda fuera de "tu cartera" (ver totalFinal)
       },
     },
   };
