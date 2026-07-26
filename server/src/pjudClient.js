@@ -42,8 +42,26 @@ export async function refresh(refreshToken) {
   return pjudFetch("/refresh", { method: "POST", body: { refresh_token: refreshToken } });
 }
 
-export function fetchListadoCausas(token, params) {
-  return pjudFetch("/web_listado_causas", { method: "POST", token, body: params });
+// El body debe traer TODAS estas claves con este shape exacto (arrays
+// vacíos para "sin filtro", no null/ausentes) — así es como el portal real
+// de PJUD arma la petición. Mandar menos claves o usar null en los campos
+// de array hace que el filtro por procurador no se aplique correctamente
+// (se comprobó comparando contra la request real del portal en devtools).
+export function fetchListadoCausas(token, params = {}) {
+  const body = {
+    page: params.page ?? 1,
+    page_size: params.page_size ?? 50,
+    rol: params.rol ?? null,
+    tribunales: params.tribunales ?? [],
+    clientes: params.clientes ?? [],
+    procuradores: params.procuradores ?? [],
+    est_adm: params.est_adm ?? [],
+    proc: params.proc ?? [],
+    etapa: params.etapa ?? [],
+    fecha_ingreso_ini: params.fecha_ingreso_ini ?? null,
+    fecha_ingreso_fin: params.fecha_ingreso_fin ?? null,
+  };
+  return pjudFetch("/web_listado_causas", { method: "POST", token, body });
 }
 
 export function fetchCausaDetalle(token, causaId) {

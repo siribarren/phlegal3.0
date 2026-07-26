@@ -188,15 +188,7 @@ async function carteraPorProcurador(token, procuradorNombre) {
   const vistos = new Set();
 
   for (let page = 1; page <= MAX_PAGINAS; page++) {
-    const body = {
-      rol: null,
-      procuradores: [procuradorNombre],
-      est_adm: null,
-      proc: null,
-      page,
-      page_size: PAGE_SIZE,
-    };
-    const data = await pjud.fetchListadoCausas(token, body);
+    const data = await pjud.fetchListadoCausas(token, { procuradores: [procuradorNombre], page, page_size: PAGE_SIZE });
     const results = data.results ?? [];
     if (results.length === 0) break;
     for (const c of results) {
