@@ -21,6 +21,7 @@ export const PROFILES: Profile[] = [
 export interface LoginUser {
   profile: ProfileId;
   email: string;
+  nombre?: string;
 }
 
 interface DemoAccount {
@@ -69,7 +70,7 @@ export default function Login({ onLogin }: { onLogin: (user: LoginUser) => void 
       setError(null);
       try {
         const user = await apiLogin(email.trim(), password);
-        onLogin({ profile, email: user.email });
+        onLogin({ profile, email: user.email, nombre: user.nombre });
       } catch (err) {
         setError(err instanceof Error ? err.message : "No fue posible iniciar sesión.");
       } finally {

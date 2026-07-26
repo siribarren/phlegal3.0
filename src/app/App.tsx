@@ -1173,7 +1173,7 @@ export default function App() {
         {view === "consultas" && <Placeholder title="Consultas y mensajería" icon={MessageSquare} desc="Comunicación bidireccional entre abogados, procuradores, ejecutivos y mandantes con trazabilidad completa." />}
         {view === "admin" && <Placeholder title="Administración del sistema" icon={Settings} desc="Usuarios, roles, mandantes, catálogos, SLA, reglas de priorización e integraciones." />}
         {isAbogado && view === "miescritorio" && <MiEscritorio onNavigate={setView} onAbrirCausa={abrirCausaDesdeEscritorio} email={user.email} />}
-        {isAbogado && view === "miscausas" && <MisCausas key={causasKey} email={user.email} initialRol={causaRolFoco} />}
+        {isAbogado && view === "miscausas" && <MisCausas key={causasKey} email={user.email} initialRol={causaRolFoco} initialProcurador={user.nombre ?? null} />}
         {isAbogado && view === "misdocumentos" && <MisDocumentos email={user.email} />}
         {isAbogado && view === "mismetricas" && <MisMetricas email={user.email} />}
       </div>

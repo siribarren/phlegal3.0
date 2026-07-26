@@ -2732,7 +2732,11 @@ function mapCausaWebToDetalle(c: CausaWeb): CausaDetalle {
 
 const PAGE_SIZE_OPCIONES = [50, 100, 200] as const;
 
-export function MisCausas({ email = "romina@abogado.cl", initialRol = null }: { email?: string; initialRol?: string | null } = {}) {
+export function MisCausas({
+  email = "romina@abogado.cl",
+  initialRol = null,
+  initialProcurador = null,
+}: { email?: string; initialRol?: string | null; initialProcurador?: string | null } = {}) {
   const [rows, setRows] = useState<CausaListadoItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -2740,7 +2744,7 @@ export function MisCausas({ email = "romina@abogado.cl", initialRol = null }: { 
 
   const [estadoAdmFiltro, setEstadoAdmFiltro] = useState("Todos");
   const [procedimientoFiltro, setProcedimientoFiltro] = useState("Todos");
-  const [procuradorFiltro, setProcuradorFiltro] = useState("Todos");
+  const [procuradorFiltro, setProcuradorFiltro] = useState(initialProcurador || "Todos");
   const [procuradorOpciones, setProcuradorOpciones] = useState<string[]>([]);
   const [busqueda, setBusqueda] = useState("");
   const [sortCol, setSortCol] = useState<ColKey | null>(null);
