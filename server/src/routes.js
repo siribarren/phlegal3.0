@@ -176,9 +176,55 @@ router.get("/procuradores", requireSession, async (req, res) => {
   }
 });
 
+// /home de PJUD solo da el semáforo del estudio completo, sin desglose por
+// procurador. Para cuentas de plataforma armamos el semáforo paginando
+// /web_listado_causas ya forzado al procurador de la sesión (mismo filtro
+// que /causas) y contando por color, en vez de mostrar la cartera de todo
+// el estudio.
+async function carteraPorProcurador(token, procuradorNombre) {
+  const PAGE_SIZE = 200;
+  const conteo = { verde: 0, amarillo: 0, rojo: 0, morado: 0, sin_gestion: 0 };
+  let page = 1;
+  let total = Infinity;
+  let acumulado = 0;
+
+  while (acumulado < total) {
+    const data = await pjud.fetchListadoCausas(token, { procuradores: [procuradorNombre], page, page_size: PAGE_SIZE });
+    total = data.total ?? 0;
+    for (const c of data.results ?? []) {
+      if (c.semaforo === "VERDE") conteo.verde++;
+      else if (c.semaforo === "AMARILLO") conteo.amarillo++;
+      else if (c.semaforo === "ROJO") conteo.rojo++;
+      else conteo.sin_gestion++;
+    }
+    acumulado += data.results?.length ?? 0;
+    if (!data.results || data.results.length === 0) break;
+    page++;
+  }
+
+  const totalFinal = conteo.verde + conteo.amarillo + conteo.rojo + conteo.morado + conteo.sin_gestion;
+  const pct = n => (totalFinal ? Math.round((n / totalFinal) * 1000) / 10 : 0);
+  return {
+    tipo: "procurador",
+    semaforos: {
+      estudio: {
+        ...conteo,
+        total: totalFinal,
+        porcentaje_verde: pct(conteo.verde),
+        porcentaje_amarillo: pct(conteo.amarillo),
+        porcentaje_rojo: pct(conteo.rojo),
+        porcentaje_morado: pct(conteo.morado),
+        porcentaje_sin_gestion: pct(conteo.sin_gestion),
+      },
+    },
+  };
+}
+
 router.get("/home", requireSession, async (req, res) => {
   try {
-    const data = await pjud.fetchHome(req.accessToken);
+    const data = req.procuradorNombre
+      ? await carteraPorProcurador(req.accessToken, req.procuradorNombre)
+      : await pjud.fetchHome(req.accessToken);
     res.json(data);
   } catch (err) {
     res.status(err.status ?? 502).json(err.body ?? { detail: "Error consultando el resumen de cartera" });
