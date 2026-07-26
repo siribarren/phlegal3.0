@@ -183,23 +183,25 @@ router.get("/procuradores", requireSession, async (req, res) => {
 // el estudio.
 async function carteraPorProcurador(token, procuradorNombre) {
   const PAGE_SIZE = 200;
+  const MAX_PAGINAS = 100; // salvaguarda: 100 * PAGE_SIZE = 20.000 causas por procurador
   const conteo = { verde: 0, amarillo: 0, rojo: 0, morado: 0, sin_gestion: 0 };
-  let page = 1;
-  let total = Infinity;
-  let acumulado = 0;
+  const vistos = new Set();
 
-  while (acumulado < total) {
+  for (let page = 1; page <= MAX_PAGINAS; page++) {
     const data = await pjud.fetchListadoCausas(token, { procuradores: [procuradorNombre], page, page_size: PAGE_SIZE });
-    total = data.total ?? 0;
-    for (const c of data.results ?? []) {
+    const results = data.results ?? [];
+    if (results.length === 0) break;
+    for (const c of results) {
+      // Si la API repite filas entre páginas (paginación sin orden estable),
+      // no contar la misma causa dos veces.
+      if (vistos.has(c.causa_id)) continue;
+      vistos.add(c.causa_id);
       if (c.semaforo === "VERDE") conteo.verde++;
       else if (c.semaforo === "AMARILLO") conteo.amarillo++;
       else if (c.semaforo === "ROJO") conteo.rojo++;
       else conteo.sin_gestion++;
     }
-    acumulado += data.results?.length ?? 0;
-    if (!data.results || data.results.length === 0) break;
-    page++;
+    if (results.length < PAGE_SIZE) break; // última página
   }
 
   const totalFinal = conteo.verde + conteo.amarillo + conteo.rojo + conteo.morado + conteo.sin_gestion;
