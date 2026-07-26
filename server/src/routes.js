@@ -188,11 +188,15 @@ async function carteraPorProcurador(token, procuradorNombre) {
   const vistos = new Set();
 
   for (let page = 1; page <= MAX_PAGINAS; page++) {
-    // Solo causas vigentes: sin esto, la cartera incluye también el histórico
-    // archivado, que infla el total muy por encima de lo que es "tu cartera".
+    // Mismo shape de body que usa "Mis Causas" (MisCausas en ProcuradorView.tsx),
+    // que ya está verificado contra la API real: mandar rol/est_adm/proc
+    // ausentes (en vez de null explícito) hacía que el filtro por procurador
+    // no se aplicara igual y devolviera muchas más causas de las reales.
     const data = await pjud.fetchListadoCausas(token, {
+      rol: null,
       procuradores: [procuradorNombre],
-      est_adm: ["Sin archivar"],
+      est_adm: null,
+      proc: null,
       page,
       page_size: PAGE_SIZE,
     });
@@ -210,6 +214,8 @@ async function carteraPorProcurador(token, procuradorNombre) {
     }
     if (results.length < PAGE_SIZE) break; // última página
   }
+
+  console.error("DEBUG carteraPorProcurador: pedido=", procuradorNombre, "total_deduped=", vistos.size, "primeros_causa_id=", [...vistos].slice(0, 8), "ultimos_causa_id=", [...vistos].slice(-8));
 
   const totalFinal = conteo.verde + conteo.amarillo + conteo.rojo + conteo.morado + conteo.sin_gestion;
   const pct = n => (totalFinal ? Math.round((n / totalFinal) * 1000) / 10 : 0);
