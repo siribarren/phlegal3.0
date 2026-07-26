@@ -1719,7 +1719,14 @@ export function MiEscritorio({ onNavigate, onAbrirCausa, userName = "Romina", em
       {!carteraError && carteraLoading && (
         <div className="grid grid-cols-3 gap-4">
           {[0, 1, 2].map(i => (
-            <div key={i} className="bg-card rounded-xl border border-border p-4 animate-pulse h-[92px]" />
+            <div key={i} className="bg-card rounded-xl border border-border p-4 animate-pulse">
+              <div className="flex items-center justify-between">
+                <div className="h-5 w-24 rounded-full bg-muted" />
+                <div className="h-3.5 w-16 rounded bg-muted" />
+              </div>
+              <div className="h-7 w-12 rounded bg-muted mt-2.5" />
+              <div className="h-3 w-32 rounded bg-muted mt-2.5" />
+            </div>
           ))}
         </div>
       )}
