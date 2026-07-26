@@ -182,25 +182,25 @@ router.get("/procuradores", requireSession, async (req, res) => {
 // que /causas) y contando por color, en vez de mostrar la cartera de todo
 // el estudio.
 async function carteraPorProcurador(token, procuradorNombre) {
-  const PAGE_SIZE = 200;
-  const MAX_PAGINAS = 100; // salvaguarda: 100 * PAGE_SIZE = 20.000 causas por procurador
+  const PAGE_SIZE = 50; // mismo page_size por defecto que usa "Mis Causas" verificada
+  const MAX_PAGINAS = 200;
   const conteo = { verde: 0, amarillo: 0, rojo: 0, morado: 0, sin_gestion: 0 };
   const vistos = new Set();
 
   for (let page = 1; page <= MAX_PAGINAS; page++) {
-    // Mismo shape de body que usa "Mis Causas" (MisCausas en ProcuradorView.tsx),
-    // que ya está verificado contra la API real: mandar rol/est_adm/proc
-    // ausentes (en vez de null explícito) hacía que el filtro por procurador
-    // no se aplicara igual y devolviera muchas más causas de las reales.
-    const data = await pjud.fetchListadoCausas(token, {
+    const body = {
       rol: null,
       procuradores: [procuradorNombre],
       est_adm: null,
       proc: null,
       page,
       page_size: PAGE_SIZE,
-    });
+    };
+    const data = await pjud.fetchListadoCausas(token, body);
     const results = data.results ?? [];
+    if (page === 1) {
+      console.error("DEBUG carteraPorProcurador body=", JSON.stringify(body), "-> total_api=", data.total, "resultados=", results.length);
+    }
     if (results.length === 0) break;
     for (const c of results) {
       // Si la API repite filas entre páginas (paginación sin orden estable),
