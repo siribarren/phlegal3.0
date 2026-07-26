@@ -23,7 +23,12 @@ async function pjudFetch(path, { method = "GET", token, body } = {}) {
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
+  let data;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text ? { detail: text.slice(0, 500) } : null;
+  }
   if (!res.ok) throw new PjudApiError(res.status, data);
   return data;
 }

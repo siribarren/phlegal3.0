@@ -119,7 +119,7 @@ router.post("/procurador-login", async (req, res) => {
     res.cookie(SESSION_COOKIE, sessionId, COOKIE_OPTS);
     res.json({ user });
   } catch (err) {
-    console.error("procurador-login:", err);
+    console.error("procurador-login:", err.status, err.body ?? err.message, err);
     res.status(502).json({ detail: "No fue posible validar la cuenta con PJUD." });
   }
 });
