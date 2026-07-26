@@ -1,26 +1,28 @@
 #!/bin/bash
-# Detiene el servidor de desarrollo iniciado con run.sh.
+# Detiene el frontend y el BFF Procurador iniciados con run.sh.
 set -e
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DIR"
 
-PID_FILE=".dev-server.pid"
+stop_pidfile() {
+  local pid_file="$1"
+  local label="$2"
+  if [ ! -f "$pid_file" ]; then
+    echo "$label: no hay proceso registrado (no existe $pid_file)."
+    return
+  fi
+  local pid
+  pid="$(cat "$pid_file")"
+  if kill -0 "$pid" 2>/dev/null; then
+    pkill -P "$pid" 2>/dev/null || true
+    kill "$pid" 2>/dev/null || true
+    echo "$label detenido (PID $pid)."
+  else
+    echo "$label: el proceso $pid ya no estaba corriendo."
+  fi
+  rm -f "$pid_file"
+}
 
-if [ ! -f "$PID_FILE" ]; then
-  echo "No hay un servidor registrado (no existe $PID_FILE)."
-  exit 0
-fi
-
-PID="$(cat "$PID_FILE")"
-
-if kill -0 "$PID" 2>/dev/null; then
-  # npm run dev crea un proceso hijo (vite); matamos todo el grupo.
-  pkill -P "$PID" 2>/dev/null || true
-  kill "$PID" 2>/dev/null || true
-  echo "Servidor detenido (PID $PID)."
-else
-  echo "El proceso $PID ya no estaba corriendo."
-fi
-
-rm -f "$PID_FILE"
+stop_pidfile ".dev-server.pid" "Frontend"
+stop_pidfile ".bff-server.pid" "BFF Procurador"

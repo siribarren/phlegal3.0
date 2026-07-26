@@ -37,5 +37,12 @@ export default defineConfig({
   server: {
     port: 5176,
     strictPort: true,
+    proxy: {
+      // BFF Procurador (server/) — ver docs/arquitectura-propuesta.md sección 10.
+      '/bff': {
+        target: process.env.BFF_URL || 'http://localhost:4001',
+        changeOrigin: true,
+      },
+    },
   },
 })

@@ -12,6 +12,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line,
 } from "recharts";
+import { fetchListadoCausas, fetchCausaDetalle, fetchProcuradores, fetchHome, type CausaListadoItem, type CausaWeb } from "../lib/api";
 
 // ─── Tipos ──────────────────────────────────────────────────────────────────
 
@@ -515,48 +516,6 @@ function generarCausasRomina(cantidad: number): CausaDetalle[] {
 
 CAUSAS_DETALLE.push(...generarCausasRomina(498));
 
-const CAUSAS_ASIGNADAS = CAUSAS_DETALLE.filter(c => c.procurador === "Romina Hernandez");
-
-const SEMAFORO_POR_ESTADO: Record<EstadoSLA, NonNullable<CausaDetalle["semaforo"]>> = {
-  estandar: "VERDE", limite: "AMARILLO", fuera: "ROJO",
-};
-
-function causaDetalleFromWorkItem(item: WorkItem): CausaDetalle {
-  const accion = ACCION_META[item.accionTipo];
-  return {
-    rol: item.rol,
-    pagare: "-",
-    tribunal: item.tribunal,
-    cliente: item.mandante,
-    procurador: "Romina Fuentes",
-    fechaIngreso: "2026-07-15",
-    etapa: accion.label,
-    estadoAdm: "Sin archivar",
-    procedimiento: item.exhorto ? "Exhorto" : "Ejecutivo Obligación de Dar",
-    estadoCausa: "ACTIVO",
-    semaforo: SEMAFORO_POR_ESTADO[item.estado],
-    estadoCRM: accion.label,
-    subestadoCRM: item.detalle ?? "-",
-    ubicacion: "Digital",
-    estadoProc: "Tramitación",
-    nroPagare: "No recuperado",
-    abogadoPatrocinante: "RONALD EDUARDO ZEPEDA FLORES",
-    cuadernos: ["0 - Principal"],
-    historia: [],
-    litigantes: [{ nombre: item.deudor, rut: "-", calidad: "DDO.", tipo: "NATURAL" }],
-    exhortos: item.exhorto && item.tribunalExhortado
-      ? [{ rol: `${item.rol}-EX`, fechaIngreso: "2026-07-15", tribunal: item.tribunalExhortado, estado: "Tramitación" }]
-      : [],
-  };
-}
-
-function getCausaDetalle(rol: string): CausaDetalle | null {
-  const enCausas = CAUSAS_DETALLE.find(c => c.rol === rol);
-  if (enCausas) return enCausas;
-  const item = WORK_ITEMS.find(i => i.rol === rol);
-  return item ? causaDetalleFromWorkItem(item) : null;
-}
-
 const HIST_TIPO_META: Record<HistItem["tipo"], { label: string; icon: React.ElementType; bg: string; text: string }> = {
   estado: { label: "Cambio de estado", icon: CalendarClock, bg: "bg-blue-50", text: "text-blue-600" },
   tarea: { label: "Tarea realizada", icon: CheckCircle2, bg: "bg-emerald-50", text: "text-emerald-600" },
@@ -1004,6 +963,19 @@ const SEMAFORO_DOT: Record<NonNullable<CausaDetalle["semaforo"]>, string> = {
 const SEMAFORO_A_ESTADO: Record<NonNullable<CausaDetalle["semaforo"]>, EstadoSLA> = {
   VERDE: "estandar", AMARILLO: "limite", ROJO: "fuera",
 };
+
+// El semáforo solo se calcula una vez que la causa entra a gestión de cobranza;
+// causas en trámite de exhorto u otras etapas preliminares llegan con semaforo=null.
+function SemaforoBadge({ semaforo }: { semaforo: "VERDE" | "AMARILLO" | "ROJO" | null | undefined }) {
+  if (!semaforo) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-500 border border-gray-200">
+        <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />Sin gestión
+      </span>
+    );
+  }
+  return <EstadoBadge estado={SEMAFORO_A_ESTADO[semaforo]} />;
+}
 
 const SEMAFORO_BLOQUE: Record<NonNullable<CausaDetalle["semaforo"]>, string> = {
   VERDE: "bg-emerald-50 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300",
@@ -1606,6 +1578,8 @@ function AnalisisIAModal({
 export function MiEscritorio({ onNavigate, onAbrirCausa, userName = "Romina", email = "romina@abogado.cl" }: { onNavigate?: (view: string) => void; onAbrirCausa?: (rol: string) => void; userName?: string; email?: string }) {
   const [items, setItems] = useState(WORK_ITEMS);
   const [cartera, setCartera] = useState(CARTERA);
+  const [carteraLoading, setCarteraLoading] = useState(true);
+  const [carteraError, setCarteraError] = useState<string | null>(null);
   const [estadoFiltro, setEstadoFiltro] = useState<EstadoSLA | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [banner, setBanner] = useState<string | null>(null);
@@ -1621,6 +1595,24 @@ export function MiEscritorio({ onNavigate, onAbrirCausa, userName = "Romina", em
   const [responderConsulta, setResponderConsulta] = useState<WorkItem | null>(null);
   const [responderTodasConsultas, setResponderTodasConsultas] = useState<WorkItem[] | null>(null);
   const consultas = useMemo(() => items.filter(i => i.accionTipo === "consulta"), [items]);
+
+  useEffect(() => {
+    let cancelado = false;
+    setCarteraLoading(true);
+    setCarteraError(null);
+    fetchHome()
+      .then(res => {
+        if (cancelado) return;
+        const s = res.semaforos.estudio;
+        setCartera({ total: s.total, estandar: s.verde, limite: s.amarillo, fuera: s.rojo });
+      })
+      .catch(err => {
+        if (cancelado) return;
+        setCarteraError(err instanceof Error ? err.message : "No fue posible cargar el resumen de cartera.");
+      })
+      .finally(() => { if (!cancelado) setCarteraLoading(false); });
+    return () => { cancelado = true; };
+  }, []);
 
   function toggleColapso(tipo: AccionTipo) {
     setColapsados(prev => {
@@ -1723,6 +1715,15 @@ export function MiEscritorio({ onNavigate, onAbrirCausa, userName = "Romina", em
       )}
 
       {/* Semáforo de cartera */}
+      {carteraError && <EmptyState title="No fue posible cargar el resumen de cartera" desc={carteraError} />}
+      {!carteraError && carteraLoading && (
+        <div className="grid grid-cols-3 gap-4">
+          {[0, 1, 2].map(i => (
+            <div key={i} className="bg-card rounded-xl border border-border p-4 animate-pulse h-[92px]" />
+          ))}
+        </div>
+      )}
+      {!carteraError && !carteraLoading && (
       <div className="grid grid-cols-3 gap-4">
         {(["estandar", "limite", "fuera"] as EstadoSLA[]).map(estado => {
           const m = ESTADO_META[estado];
@@ -1761,6 +1762,7 @@ export function MiEscritorio({ onNavigate, onAbrirCausa, userName = "Romina", em
           );
         })}
       </div>
+      )}
 
       <div className="grid grid-cols-3 gap-5 items-start">
         {/* Bandeja de trabajo */}
@@ -2423,7 +2425,7 @@ function CausaDetalleView({ causa, onVolver, onIrACausa }: { causa: CausaDetalle
 
         <div className="flex items-center gap-2.5 flex-wrap">
           <h2 className="text-lg font-semibold text-foreground tracking-tight leading-snug">Detalle de Causa {causa.rol}</h2>
-          {causa.semaforo && <EstadoBadge estado={SEMAFORO_A_ESTADO[causa.semaforo]} />}
+          <SemaforoBadge semaforo={causa.semaforo} />
         </div>
 
         <div className={`flex flex-wrap items-center justify-between gap-x-6 gap-y-1.5 border rounded-xl px-4 py-2.5 text-[12px] transition-colors ${
@@ -2654,35 +2656,102 @@ function CausaDetalleView({ causa, onVolver, onIrACausa }: { causa: CausaDetalle
   );
 }
 
-type ColKey = "rol" | "pagare" | "tribunal" | "cliente" | "procurador" | "fechaIngreso" | "etapa" | "estado";
+type ColKey = "rol" | "numero_pagare" | "tribunal_nombre" | "cliente_nombre" | "procurador_nombre" | "fecha_ingreso" | "etapa" | "semaforo";
 
 const COLUMNAS: { key: ColKey; label: string }[] = [
   { key: "rol", label: "Rol/OP" },
-  { key: "pagare", label: "Pagaré" },
-  { key: "tribunal", label: "Tribunal" },
-  { key: "cliente", label: "Cliente" },
-  { key: "procurador", label: "Procurador" },
-  { key: "fechaIngreso", label: "Fec. Ingreso" },
+  { key: "numero_pagare", label: "Pagaré" },
+  { key: "tribunal_nombre", label: "Tribunal" },
+  { key: "cliente_nombre", label: "Cliente" },
+  { key: "procurador_nombre", label: "Procurador" },
+  { key: "fecha_ingreso", label: "Fec. Ingreso" },
   { key: "etapa", label: "Etapa" },
-  { key: "estado", label: "Estado" },
+  { key: "semaforo", label: "Estado" },
 ];
 
-const SEMAFORO_RANK: Record<NonNullable<CausaDetalle["semaforo"]>, number> = { ROJO: 0, AMARILLO: 1, VERDE: 2 };
+const SEMAFORO_RANK: Record<NonNullable<CausaListadoItem["semaforo"]>, number> = { ROJO: 0, AMARILLO: 1, VERDE: 2 };
 
-function valorColumna(c: CausaDetalle, key: ColKey): string | number {
-  if (key === "estado") return c.semaforo ? SEMAFORO_RANK[c.semaforo] : 3;
+function valorColumna(c: CausaListadoItem, key: ColKey): string | number {
+  if (key === "semaforo") return c.semaforo ? SEMAFORO_RANK[c.semaforo] : 3;
   return (c[key] ?? "").toString().toLowerCase();
 }
 
+// Mapea el detalle rico de GET /causa/{causa_id} a la interfaz CausaDetalle que
+// ya usa CausaDetalleView. Historia y litigantes se aplanan entre cuadernos:
+// el selector de cuaderno en la vista de detalle es solo informativo.
+function mapCausaWebToDetalle(c: CausaWeb): CausaDetalle {
+  const historia: TramiteRow[] = [];
+  const litigantes: Litigante[] = [];
+  for (const cuad of c.cuadernos) {
+    for (const h of cuad.historia) {
+      historia.push({
+        folio: Number(h.folio) || 0,
+        fecha: h.fecha,
+        etapa: h.etapa,
+        tramite: (["Resolución", "Escrito", "Actuación Receptor"].includes(h.tramite) ? h.tramite : "") as TramiteRow["tramite"],
+        descTramite: h.desc_tramite,
+        anexo: !!h.certificado_url,
+        pdfUrl: h.documento_url ?? undefined,
+      });
+    }
+    for (const l of cuad.litigantes) {
+      litigantes.push({ nombre: l.nombre, rut: l.rut, calidad: l.calidad, tipo: l.tipo });
+    }
+  }
+  return {
+    rol: c.rol,
+    pagare: c.numero_pagare ?? "-",
+    tribunal: c.tribunal_nombre,
+    cliente: c.cliente_nombre,
+    procurador: c.procurador_nombre,
+    fechaIngreso: c.fecha_ingreso,
+    etapa: c.etapa,
+    estadoAdm: c.est_adm === "Archivada" ? "Archivada" : "Sin archivar",
+    procedimiento: c.proc,
+    estadoCausa: c.estado_causa === "ACTIVO" || c.estado_causa === "INACTIVADO" ? c.estado_causa : undefined,
+    semaforo: c.semaforo ?? undefined,
+    estadoCRM: c.estado_crm ?? undefined,
+    subestadoCRM: c.subestado_crm ?? undefined,
+    ubicacion: c.ubicacion === "Física" ? "Física" : "Digital",
+    estadoProc: c.estado_proc === "Concluido" ? "Concluido" : "Tramitación",
+    causaOrigenRol: c.causa_origen?.rol,
+    nroPagare: c.numero_pagare ?? "No recuperado",
+    remate: c.remate_resumen ?? undefined,
+    abogadoPatrocinante: "",
+    cuadernos: c.cuadernos.map(cu => cu.nombre),
+    historia,
+    litigantes,
+    exhortos: c.exhortos_asociados.map(e => ({
+      rol: e.rol,
+      fechaIngreso: e.fecha_ingreso,
+      tribunal: e.tribunal_nombre,
+      estado: e.estado_proc ?? "",
+    })),
+  };
+}
+
+const PAGE_SIZE_OPCIONES = [50, 100, 200] as const;
+
 export function MisCausas({ email = "romina@abogado.cl", initialRol = null }: { email?: string; initialRol?: string | null } = {}) {
-  const [selRol, setSelRol] = useState<string | null>(initialRol);
+  const [rows, setRows] = useState<CausaListadoItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [estadoAdmFiltro, setEstadoAdmFiltro] = useState("Todos");
   const [procedimientoFiltro, setProcedimientoFiltro] = useState("Todos");
+  const [procuradorFiltro, setProcuradorFiltro] = useState("Todos");
+  const [procuradorOpciones, setProcuradorOpciones] = useState<string[]>([]);
   const [busqueda, setBusqueda] = useState("");
   const [sortCol, setSortCol] = useState<ColKey | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [pageSize, setPageSize] = useState<number | "todas">(50);
+  const [pageSize, setPageSize] = useState<number>(50);
   const [page, setPage] = useState(0);
+
+  const [causaId, setCausaId] = useState<number | null>(null);
+  const [detalle, setDetalle] = useState<CausaDetalle | null>(null);
+  const [detalleLoading, setDetalleLoading] = useState(false);
+  const [detalleError, setDetalleError] = useState<string | null>(null);
 
   function toggleSort(key: ColKey) {
     if (sortCol === key) {
@@ -2693,32 +2762,109 @@ export function MisCausas({ email = "romina@abogado.cl", initialRol = null }: { 
     }
   }
 
+  useEffect(() => {
+    fetchProcuradores()
+      .then(list => setProcuradorOpciones(list.map(p => p.nombre)))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => { setPage(0); }, [estadoAdmFiltro, procedimientoFiltro, procuradorFiltro, busqueda, pageSize]);
+
+  useEffect(() => {
+    let cancelado = false;
+    setLoading(true);
+    setError(null);
+    fetchListadoCausas({
+      rol: busqueda.trim() || null,
+      procuradores: procuradorFiltro === "Todos" ? null : [procuradorFiltro],
+      est_adm: estadoAdmFiltro === "Todos" ? null : [estadoAdmFiltro],
+      proc: procedimientoFiltro === "Todos" ? null : [procedimientoFiltro],
+      page: page + 1,
+      page_size: pageSize,
+    })
+      .then(res => {
+        if (cancelado) return;
+        setRows(res.results);
+        setTotal(res.total);
+      })
+      .catch(err => {
+        if (cancelado) return;
+        setError(err instanceof Error ? err.message : "No fue posible cargar las causas.");
+        setRows([]);
+        setTotal(0);
+      })
+      .finally(() => { if (!cancelado) setLoading(false); });
+    return () => { cancelado = true; };
+  }, [estadoAdmFiltro, procedimientoFiltro, procuradorFiltro, busqueda, page, pageSize]);
+
   const filtradas = useMemo(() => {
-    const base = CAUSAS_ASIGNADAS.filter(c =>
-      (estadoAdmFiltro === "Todos" || c.estadoAdm === estadoAdmFiltro) &&
-      (procedimientoFiltro === "Todos" || c.procedimiento === procedimientoFiltro) &&
-      (busqueda.trim() === "" || c.rol.toLowerCase().includes(busqueda.toLowerCase()) || c.cliente.toLowerCase().includes(busqueda.toLowerCase()))
-    );
-    if (!sortCol) return base;
-    return [...base].sort((a, b) => {
+    if (!sortCol) return rows;
+    return [...rows].sort((a, b) => {
       const va = valorColumna(a, sortCol);
       const vb = valorColumna(b, sortCol);
       if (va < vb) return sortDir === "asc" ? -1 : 1;
       if (va > vb) return sortDir === "asc" ? 1 : -1;
       return 0;
     });
-  }, [estadoAdmFiltro, procedimientoFiltro, busqueda, sortCol, sortDir]);
+  }, [rows, sortCol, sortDir]);
 
-  useEffect(() => { setPage(0); }, [estadoAdmFiltro, procedimientoFiltro, busqueda, pageSize]);
+  async function abrirDetalle(id: number) {
+    setCausaId(id);
+    setDetalle(null);
+    setDetalleError(null);
+    setDetalleLoading(true);
+    try {
+      const causaWeb = await fetchCausaDetalle(id);
+      setDetalle(mapCausaWebToDetalle(causaWeb));
+    } catch (err) {
+      setDetalleError(err instanceof Error ? err.message : "No fue posible cargar el detalle de la causa.");
+    } finally {
+      setDetalleLoading(false);
+    }
+  }
 
-  const totalPaginas = pageSize === "todas" ? 1 : Math.max(1, Math.ceil(filtradas.length / pageSize));
-  const paginaSegura = Math.min(page, totalPaginas - 1);
-  const paginadas = pageSize === "todas" ? filtradas : filtradas.slice(paginaSegura * pageSize, paginaSegura * pageSize + pageSize);
+  async function abrirPorRol(rol: string) {
+    setCausaId(-1);
+    setDetalle(null);
+    setDetalleError(null);
+    setDetalleLoading(true);
+    try {
+      const res = await fetchListadoCausas({ rol, page: 1, page_size: 1 });
+      const item = res.results[0];
+      if (!item) throw new Error(`No se encontró la causa ${rol}.`);
+      await abrirDetalle(item.causa_id);
+    } catch (err) {
+      setDetalleError(err instanceof Error ? err.message : "No fue posible cargar el detalle de la causa.");
+      setDetalleLoading(false);
+    }
+  }
 
-  const seleccionada = selRol ? getCausaDetalle(selRol) : null;
+  useEffect(() => {
+    if (initialRol) abrirPorRol(initialRol);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialRol]);
 
-  if (seleccionada) {
-    return <CausaDetalleView causa={seleccionada} onVolver={() => setSelRol(null)} onIrACausa={rol => setSelRol(rol)} />;
+  const totalPaginas = Math.max(1, Math.ceil(total / pageSize));
+
+  if (causaId !== null) {
+    if (detalleLoading) {
+      return (
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /> Cargando detalle de la causa...</div>
+        </div>
+      );
+    }
+    if (detalleError) {
+      return (
+        <div className="flex-1 p-6 space-y-4">
+          <button onClick={() => setCausaId(null)} className="px-4 py-2 rounded-lg border border-border text-xs font-medium hover:bg-gray-50 transition-colors text-foreground">Volver</button>
+          <EmptyState title="No fue posible cargar la causa" desc={detalleError} />
+        </div>
+      );
+    }
+    if (detalle) {
+      return <CausaDetalleView causa={detalle} onVolver={() => setCausaId(null)} onIrACausa={rol => abrirPorRol(rol)} />;
+    }
   }
 
   return (
@@ -2732,13 +2878,13 @@ export function MisCausas({ email = "romina@abogado.cl", initialRol = null }: { 
             <p className="text-gray-400 text-[11px] mt-0.5">Criterios operativos</p>
           </div>
           <button
-            onClick={() => { setEstadoAdmFiltro("Todos"); setProcedimientoFiltro("Todos"); setBusqueda(""); }}
+            onClick={() => { setEstadoAdmFiltro("Todos"); setProcedimientoFiltro("Todos"); setProcuradorFiltro("Todos"); setBusqueda(""); }}
             className="px-4 py-2 rounded-lg bg-gray-800 text-white text-xs font-medium hover:bg-gray-700 transition-colors"
           >
             Limpiar filtros
           </button>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-5">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-5">
           <div>
             <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Estado Adm.</p>
             <select value={estadoAdmFiltro} onChange={e => setEstadoAdmFiltro(e.target.value)} className="w-full text-xs border border-border rounded-lg px-3 py-2 bg-card focus:outline-none text-foreground">
@@ -2755,20 +2901,27 @@ export function MisCausas({ email = "romina@abogado.cl", initialRol = null }: { 
             </select>
           </div>
           <div>
-            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Buscar</p>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Procurador</p>
+            <select value={procuradorFiltro} onChange={e => setProcuradorFiltro(e.target.value)} className="w-full text-xs border border-border rounded-lg px-3 py-2 bg-card focus:outline-none text-foreground">
+              <option>Todos</option>
+              {procuradorOpciones.map(p => <option key={p}>{p}</option>)}
+            </select>
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Buscar por Rol</p>
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Rol u OP, cliente..." className="w-full pl-9 pr-3 py-2 text-xs bg-card border border-border rounded-lg focus:outline-none text-foreground placeholder:text-muted-foreground" />
+              <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Rol u OP..." className="w-full pl-9 pr-3 py-2 text-xs bg-card border border-border rounded-lg focus:outline-none text-foreground placeholder:text-muted-foreground" />
             </div>
           </div>
         </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[11px] text-muted-foreground font-mono">{filtradas.length} de {CAUSAS_ASIGNADAS.length} causas</p>
+        <p className="text-[11px] text-muted-foreground font-mono">{total} causas</p>
         <div className="flex items-center gap-1.5">
           <span className="text-[11px] text-muted-foreground mr-1">Mostrar:</span>
-          {([50, 100, 200, "todas"] as const).map(opcion => (
+          {PAGE_SIZE_OPCIONES.map(opcion => (
             <button
               key={opcion}
               onClick={() => setPageSize(opcion)}
@@ -2776,64 +2929,71 @@ export function MisCausas({ email = "romina@abogado.cl", initialRol = null }: { 
                 pageSize === opcion ? "bg-accent text-white border-accent" : "border-border text-foreground hover:bg-gray-50"
               }`}
             >
-              {opcion === "todas" ? "Ver todas" : opcion}
+              {opcion}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="bg-card rounded-2xl border border-border overflow-hidden overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="border-b border-border bg-gray-900">
-              {COLUMNAS.map(col => (
-                <th
-                  key={col.key}
-                  onClick={() => toggleSort(col.key)}
-                  className="text-left px-4 py-3.5 text-white font-medium text-[12px] uppercase tracking-wide whitespace-nowrap cursor-pointer select-none hover:bg-gray-800 transition-colors"
-                >
-                  <span className="flex items-center gap-1">
-                    {col.label}
-                    <ChevronDown className={`w-3 h-3 transition-all ${sortCol === col.key ? "opacity-100" : "opacity-30"} ${sortCol === col.key && sortDir === "desc" ? "rotate-180" : ""}`} />
-                  </span>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {paginadas.map(c => (
-              <tr key={c.rol} onClick={() => setSelRol(c.rol)} className="border-b border-border last:border-0 cursor-pointer hover:bg-gray-50/70 transition-colors">
-                <td className="px-4 py-3.5 font-mono text-[12px] font-semibold text-foreground">{c.rol}</td>
-                <td className="px-4 py-3.5 font-mono text-[11px] text-muted-foreground">{c.pagare}</td>
-                <td className="px-4 py-3.5 text-[12px] text-foreground">{c.tribunal}</td>
-                <td className="px-4 py-3.5 text-[12px] text-foreground">{c.cliente}</td>
-                <td className="px-4 py-3.5 text-[12px] text-muted-foreground">{c.procurador}</td>
-                <td className="px-4 py-3.5 font-mono text-[11px] text-muted-foreground whitespace-nowrap">{c.fechaIngreso}</td>
-                <td className="px-4 py-3.5 text-[12px] text-muted-foreground">{c.etapa}</td>
-                <td className="px-4 py-3.5 whitespace-nowrap">{c.semaforo && <EstadoBadge estado={SEMAFORO_A_ESTADO[c.semaforo]} />}</td>
-              </tr>
-            ))}
-            {filtradas.length === 0 && (
-              <tr><td colSpan={8}><EmptyState title="Sin resultados" desc="Ningún causa coincide con los filtros aplicados." /></td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      {error && <EmptyState title="No fue posible cargar las causas" desc={error} />}
 
-      {pageSize !== "todas" && totalPaginas > 1 && (
+      {!error && (
+        <div className="bg-card rounded-2xl border border-border overflow-hidden overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-border bg-gray-900">
+                {COLUMNAS.map(col => (
+                  <th
+                    key={col.key}
+                    onClick={() => toggleSort(col.key)}
+                    className="text-left px-4 py-3.5 text-white font-medium text-[12px] uppercase tracking-wide whitespace-nowrap cursor-pointer select-none hover:bg-gray-800 transition-colors"
+                  >
+                    <span className="flex items-center gap-1">
+                      {col.label}
+                      <ChevronDown className={`w-3 h-3 transition-all ${sortCol === col.key ? "opacity-100" : "opacity-30"} ${sortCol === col.key && sortDir === "desc" ? "rotate-180" : ""}`} />
+                    </span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading && (
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-[12px] text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Cargando causas...</td></tr>
+              )}
+              {!loading && filtradas.map(c => (
+                <tr key={c.causa_id} onClick={() => abrirDetalle(c.causa_id)} className="border-b border-border last:border-0 cursor-pointer hover:bg-gray-50/70 transition-colors">
+                  <td className="px-4 py-3.5 font-mono text-[12px] font-semibold text-foreground">{c.rol}</td>
+                  <td className="px-4 py-3.5 font-mono text-[11px] text-muted-foreground">{c.numero_pagare ?? "-"}</td>
+                  <td className="px-4 py-3.5 text-[12px] text-foreground">{c.tribunal_nombre}</td>
+                  <td className="px-4 py-3.5 text-[12px] text-foreground">{c.cliente_nombre ?? "-"}</td>
+                  <td className="px-4 py-3.5 text-[12px] text-muted-foreground">{c.procurador_nombre ?? "-"}</td>
+                  <td className="px-4 py-3.5 font-mono text-[11px] text-muted-foreground whitespace-nowrap">{c.fecha_ingreso}</td>
+                  <td className="px-4 py-3.5 text-[12px] text-muted-foreground">{c.etapa}</td>
+                  <td className="px-4 py-3.5 whitespace-nowrap"><SemaforoBadge semaforo={c.semaforo} /></td>
+                </tr>
+              ))}
+              {!loading && filtradas.length === 0 && (
+                <tr><td colSpan={8}><EmptyState title="Sin resultados" desc="Ninguna causa coincide con los filtros aplicados." /></td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {totalPaginas > 1 && (
         <div className="flex items-center justify-between gap-3">
-          <p className="text-[11px] text-muted-foreground">Página {paginaSegura + 1} de {totalPaginas}</p>
+          <p className="text-[11px] text-muted-foreground">Página {page + 1} de {totalPaginas}</p>
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => setPage(p => Math.max(0, p - 1))}
-              disabled={paginaSegura === 0}
+              disabled={page === 0}
               className="text-[11px] font-medium rounded-lg px-3 py-1.5 border border-border text-foreground hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Anterior
             </button>
             <button
               onClick={() => setPage(p => Math.min(totalPaginas - 1, p + 1))}
-              disabled={paginaSegura >= totalPaginas - 1}
+              disabled={page >= totalPaginas - 1}
               className="text-[11px] font-medium rounded-lg px-3 py-1.5 border border-border text-foreground hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Siguiente

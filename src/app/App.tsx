@@ -7,6 +7,7 @@ import {
   ChevronRight, Activity, Shield, BookOpen, Building2, Users, Brain, Zap
 } from "lucide-react";
 import Login, { PROFILES, type LoginUser, type ProfileId } from "./Login";
+import { logout } from "../lib/api";
 import MandanteView, { InteligenciaCarteraView, abrirReporteEjecutivo } from "./MandanteView";
 import { MiEscritorio, MisCausas, MisDocumentos, MisMetricas } from "./ProcuradorView";
 import AccionesMasivas from "./AccionesMasivas";
@@ -1157,7 +1158,7 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
-      <Sidebar active={view} onNav={handleNav} user={user} onLogout={() => setUser(null)} />
+      <Sidebar active={view} onNav={handleNav} user={user} onLogout={() => { logout(); setUser(null); }} />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {!isAbogado && !(isMandante && view === "dashboard") && view !== "acciones-masivas" && <TopBar title={title} sub={sub} user={user} />}
         {view === "dashboard" && (isMandante ? <MandanteView onOpenAnalisisAvanzado={() => setView("inteligencia-cartera")} /> : <Dashboard />)}

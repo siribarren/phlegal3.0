@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Building2, TrendingUp, Scale, Phone, Flame, Lock, Mail, Check, ShieldCheck } from "lucide-react";
+import { login as apiLogin } from "../lib/api";
 
 export type ProfileId = "mandante" | "abogado_jefe" | "abogado" | "ejecutivo";
 
@@ -48,8 +49,9 @@ export default function Login({ onLogin }: { onLogin: (user: LoginUser) => void 
   const [error, setError] = useState<string | null>(null);
 
   const selectedAccount = DEMO_ACCOUNTS.find(a => a.profile === profile);
+  const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!profile) {
       setError("Selecciona un perfil para continuar.");
@@ -59,6 +61,23 @@ export default function Login({ onLogin }: { onLogin: (user: LoginUser) => void 
       setError("Ingresa tu correo y contraseña.");
       return;
     }
+
+    // El perfil "Abogado / Procurador" se autentica contra la API real (Mis Causas
+    // consume datos en vivo). Los demás perfiles siguen usando las cuentas demo.
+    if (profile === "abogado") {
+      setLoading(true);
+      setError(null);
+      try {
+        const user = await apiLogin(email.trim(), password);
+        onLogin({ profile, email: user.email });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "No fue posible iniciar sesión.");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     const match = DEMO_ACCOUNTS.find(
       a => a.profile === profile && a.email.toLowerCase() === email.trim().toLowerCase() && a.password === password
     );
@@ -206,9 +225,15 @@ export default function Login({ onLogin }: { onLogin: (user: LoginUser) => void 
                     </div>
                   </div>
 
-                  {selectedAccount && (
+                  {selectedAccount && profile !== "abogado" && (
                     <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
                       Demo: {selectedAccount.email} / {selectedAccount.password}
+                    </div>
+                  )}
+
+                  {profile === "abogado" && (
+                    <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
+                      Este perfil se conecta a la Oficina Virtual PJUD con tu correo y contraseña reales.
                     </div>
                   )}
 
@@ -220,10 +245,11 @@ export default function Login({ onLogin }: { onLogin: (user: LoginUser) => void 
 
                   <button
                     type="submit"
-                    className="h-11 w-full rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                    disabled={loading}
+                    className="h-11 w-full rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
                     style={{ background: "linear-gradient(135deg, #FF7A1A 0%, #C4270E 100%)" }}
                   >
-                    Ingresar
+                    {loading ? "Ingresando..." : "Ingresar"}
                   </button>
                 </form>
 
