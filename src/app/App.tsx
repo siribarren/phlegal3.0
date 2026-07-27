@@ -1140,6 +1140,7 @@ export default function App() {
   const [user, setUser] = useState<LoginUser | null>(null);
   const [view, setView] = useState("dashboard");
   const [causaRolFoco, setCausaRolFoco] = useState<string | null>(null);
+  const [causaIdFoco, setCausaIdFoco] = useState<number | null>(null);
   const [causaColorFoco, setCausaColorFoco] = useState<"VERDE" | "AMARILLO" | "ROJO" | null>(null);
   const [causasKey, setCausasKey] = useState(0);
   const isMandante = user?.profile === "mandante";
@@ -1156,14 +1157,16 @@ export default function App() {
   function handleNav(id: string) {
     if (id === "miscausas") {
       setCausaRolFoco(null);
+      setCausaIdFoco(null);
       setCausaColorFoco(null);
       setCausasKey(k => k + 1);
     }
     setView(id);
   }
 
-  function abrirCausaDesdeEscritorio(rol: string) {
+  function abrirCausaDesdeEscritorio(rol: string, causaId?: number) {
     setCausaRolFoco(rol);
+    setCausaIdFoco(Number.isFinite(causaId) ? (causaId as number) : null);
     setCausaColorFoco(null);
     setCausasKey(k => k + 1);
     setView("miscausas");
@@ -1171,6 +1174,7 @@ export default function App() {
 
   function verCausasRojasDesdeEscritorio() {
     setCausaRolFoco(null);
+    setCausaIdFoco(null);
     setCausaColorFoco("ROJO");
     setCausasKey(k => k + 1);
     setView("miscausas");
@@ -1197,7 +1201,7 @@ export default function App() {
         {view === "consultas" && <Placeholder title="Consultas y mensajería" icon={MessageSquare} desc="Comunicación bidireccional entre abogados, procuradores, ejecutivos y mandantes con trazabilidad completa." />}
         {view === "admin" && <Placeholder title="Administración del sistema" icon={Settings} desc="Usuarios, roles, mandantes, catálogos, SLA, reglas de priorización e integraciones." />}
         {isAbogado && view === "miescritorio" && <MiEscritorio onNavigate={setView} onAbrirCausa={abrirCausaDesdeEscritorio} onVerTodasRojas={verCausasRojasDesdeEscritorio} email={user.email} userName={nombreSaludoProcurador(user)} />}
-        {isAbogado && view === "miscausas" && <MisCausas key={causasKey} email={user.email} initialRol={causaRolFoco} initialProcurador={user.nombre ?? null} initialColor={causaColorFoco} />}
+        {isAbogado && view === "miscausas" && <MisCausas key={causasKey} email={user.email} initialRol={causaRolFoco} initialCausaId={causaIdFoco} initialProcurador={user.nombre ?? null} initialColor={causaColorFoco} />}
         {isAbogado && view === "misdocumentos" && <MisDocumentos email={user.email} />}
         {isAbogado && view === "mismetricas" && <MisMetricas email={user.email} />}
       </div>

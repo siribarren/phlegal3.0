@@ -163,12 +163,12 @@ function accionTipoParaSubestado(subestado: string | null | undefined): AccionTi
   return undefined;
 }
 
-function primerLitiganteDeudor(cuadernos: CausaWeb["cuadernos"]): string {
-  for (const cuad of cuadernos) {
-    const deudor = cuad.litigantes.find(l => normalizarTexto(l.calidad).includes("ddo"));
+function primerLitiganteDeudor(cuadernos: CausaWeb["cuadernos"] | null | undefined): string {
+  for (const cuad of cuadernos ?? []) {
+    const deudor = (cuad.litigantes ?? []).find(l => normalizarTexto(l.calidad).includes("ddo"));
     if (deudor) return deudor.nombre;
   }
-  return cuadernos[0]?.litigantes[0]?.nombre ?? "-";
+  return cuadernos?.[0]?.litigantes?.[0]?.nombre ?? "-";
 }
 
 // Trae toda la cartera real del procurador logueado (el servidor ya fuerza
@@ -1645,7 +1645,7 @@ function AnalisisIAModal({
 
 // ─── MiEscritorio ───────────────────────────────────────────────────────────
 
-export function MiEscritorio({ onNavigate, onAbrirCausa, onVerTodasRojas, userName = "Romina", email = "romina@abogado.cl" }: { onNavigate?: (view: string) => void; onAbrirCausa?: (rol: string) => void; onVerTodasRojas?: () => void; userName?: string; email?: string }) {
+export function MiEscritorio({ onNavigate, onAbrirCausa, onVerTodasRojas, userName = "Romina", email = "romina@abogado.cl" }: { onNavigate?: (view: string) => void; onAbrirCausa?: (rol: string, causaId?: number) => void; onVerTodasRojas?: () => void; userName?: string; email?: string }) {
   const [items, setItems] = useState<WorkItem[]>([]);
   const [itemsLoading, setItemsLoading] = useState(true);
   const [itemsError, setItemsError] = useState<string | null>(null);
@@ -1964,7 +1964,7 @@ export function MiEscritorio({ onNavigate, onAbrirCausa, onVerTodasRojas, userNa
                           }}
                           exit={{ opacity: 0, y: 12, scale: 0.98, height: 0, paddingTop: 0, paddingBottom: 0, marginTop: 0, marginBottom: 0 }}
                           transition={{ duration: 0.3, ease: "easeOut" }}
-                          onClick={() => !finalizando && onAbrirCausa?.(item.rol)}
+                          onClick={() => !finalizando && onAbrirCausa?.(item.rol, Number(item.id))}
                           className="relative flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-0 hover:bg-gray-50/60 transition-colors cursor-pointer overflow-hidden"
                         >
                           {finalizando && (
@@ -2069,7 +2069,7 @@ export function MiEscritorio({ onNavigate, onAbrirCausa, onVerTodasRojas, userNa
                           }}
                           exit={{ opacity: 0, y: 12, scale: 0.98, height: 0, paddingTop: 0, paddingBottom: 0, marginTop: 0, marginBottom: 0 }}
                           transition={{ duration: 0.3, ease: "easeOut" }}
-                          onClick={() => !finalizando && onAbrirCausa?.(item.rol)}
+                          onClick={() => !finalizando && onAbrirCausa?.(item.rol, Number(item.id))}
                           className="relative flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-0 hover:bg-gray-50/60 transition-colors cursor-pointer overflow-hidden"
                         >
                           {finalizando && (
@@ -2159,7 +2159,7 @@ export function MiEscritorio({ onNavigate, onAbrirCausa, onVerTodasRojas, userNa
                       initial={{ opacity: 0, y: -10, scale: 0.98 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       transition={{ duration: 0.3, ease: "easeOut" }}
-                      onClick={() => onAbrirCausa?.(item.rol)}
+                      onClick={() => onAbrirCausa?.(item.rol, Number(item.id))}
                       className="flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-0 hover:bg-gray-50/60 transition-colors cursor-pointer"
                     >
                       <motion.span
@@ -2210,7 +2210,7 @@ export function MiEscritorio({ onNavigate, onAbrirCausa, onVerTodasRojas, userNa
               {criticas.map(v => (
                 <div
                   key={v.causa_id ?? v.rol}
-                  onClick={() => onAbrirCausa?.(v.rol)}
+                  onClick={() => onAbrirCausa?.(v.rol, v.causa_id ?? undefined)}
                   className="p-2.5 rounded-lg border cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 hover:bg-red-100 hover:border-red-300 bg-red-50 border-red-200"
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -2315,9 +2315,9 @@ export function MiEscritorio({ onNavigate, onAbrirCausa, onVerTodasRojas, userNa
             setConfirmarRealizado(null);
           }}
           onRevisar={() => {
-            const rol = confirmarRealizado.item.rol;
+            const { rol, id } = confirmarRealizado.item;
             setConfirmarRealizado(null);
-            onAbrirCausa?.(rol);
+            onAbrirCausa?.(rol, Number(id));
           }}
         />
       )}
@@ -2836,8 +2836,8 @@ function valorColumna(c: CausaListadoItem, key: ColKey): string | number {
 function mapCausaWebToDetalle(c: CausaWeb): CausaDetalle {
   const historia: TramiteRow[] = [];
   const litigantes: Litigante[] = [];
-  for (const cuad of c.cuadernos) {
-    for (const h of cuad.historia) {
+  for (const cuad of c.cuadernos ?? []) {
+    for (const h of cuad.historia ?? []) {
       historia.push({
         folio: Number(h.folio) || 0,
         fecha: h.fecha,
@@ -2848,7 +2848,7 @@ function mapCausaWebToDetalle(c: CausaWeb): CausaDetalle {
         pdfUrl: h.documento_url ?? undefined,
       });
     }
-    for (const l of cuad.litigantes) {
+    for (const l of cuad.litigantes ?? []) {
       litigantes.push({ nombre: l.nombre, rut: l.rut, calidad: l.calidad, tipo: l.tipo });
     }
   }
@@ -2872,10 +2872,10 @@ function mapCausaWebToDetalle(c: CausaWeb): CausaDetalle {
     nroPagare: c.numero_pagare ?? "No recuperado",
     remate: c.remate_resumen ?? undefined,
     abogadoPatrocinante: "",
-    cuadernos: c.cuadernos.map(cu => cu.nombre),
+    cuadernos: (c.cuadernos ?? []).map(cu => cu.nombre),
     historia,
     litigantes,
-    exhortos: c.exhortos_asociados.map(e => ({
+    exhortos: (c.exhortos_asociados ?? []).map(e => ({
       rol: e.rol,
       fechaIngreso: e.fecha_ingreso,
       tribunal: e.tribunal_nombre,
@@ -2889,9 +2889,10 @@ const PAGE_SIZE_OPCIONES = [50, 100, 200, "TODAS"] as const;
 export function MisCausas({
   email = "romina@abogado.cl",
   initialRol = null,
+  initialCausaId = null,
   initialProcurador = null,
   initialColor = null,
-}: { email?: string; initialRol?: string | null; initialProcurador?: string | null; initialColor?: "VERDE" | "AMARILLO" | "ROJO" | null } = {}) {
+}: { email?: string; initialRol?: string | null; initialCausaId?: number | null; initialProcurador?: string | null; initialColor?: "VERDE" | "AMARILLO" | "ROJO" | null } = {}) {
   const [rows, setRows] = useState<CausaListadoItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -3049,9 +3050,12 @@ export function MisCausas({
   }
 
   useEffect(() => {
-    if (initialRol) abrirPorRol(initialRol);
+    // Si ya sabemos el causa_id (viene de Mi Escritorio) se abre directo, sin
+    // depender de que la búsqueda por rol encuentre un match exacto.
+    if (initialCausaId != null) abrirDetalle(initialCausaId);
+    else if (initialRol) abrirPorRol(initialRol);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialRol]);
+  }, [initialRol, initialCausaId]);
 
   const totalPaginas = pageSize === "TODAS" ? 1 : Math.max(1, Math.ceil(total / pageSize));
 
