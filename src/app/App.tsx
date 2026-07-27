@@ -1203,10 +1203,25 @@ export default function App() {
         {view === "gastos" && <Placeholder title="Gastos judiciales" icon={Receipt} desc="Solicitud, aprobación, rendición y control de reembolsos de gastos asociados a receptores y trámites." />}
         {view === "consultas" && <Placeholder title="Consultas y mensajería" icon={MessageSquare} desc="Comunicación bidireccional entre abogados, procuradores, ejecutivos y mandantes con trazabilidad completa." />}
         {view === "admin" && <Placeholder title="Administración del sistema" icon={Settings} desc="Usuarios, roles, mandantes, catálogos, SLA, reglas de priorización e integraciones." />}
-        {isAbogado && view === "miescritorio" && <MiEscritorio onNavigate={setView} onAbrirCausa={abrirCausaDesdeEscritorio} onVerTodasRojas={verCausasRojasDesdeEscritorio} email={user.email} userName={nombreSaludoProcurador(user)} />}
-        {isAbogado && view === "miscausas" && <MisCausas key={causasKey} email={user.email} initialRol={causaRolFoco} initialCausaId={causaIdFoco} initialProcurador={esSupervisor ? null : (user.nombre ?? null)} initialColor={causaColorFoco} />}
-        {isAbogado && view === "misdocumentos" && <MisDocumentos email={user.email} />}
-        {isAbogado && view === "mismetricas" && <MisMetricas email={user.email} />}
+        {isAbogado && (
+          <>
+            {/* display:contents en vez de desmontar por vista: al volver a
+                una pantalla ya visitada (ej. Mi Escritorio) conserva su
+                estado (bandeja ya cargada, filtros) en vez de recargar. */}
+            <div style={{ display: view === "miescritorio" ? "contents" : "none" }}>
+              <MiEscritorio onNavigate={setView} onAbrirCausa={abrirCausaDesdeEscritorio} onVerTodasRojas={verCausasRojasDesdeEscritorio} email={user.email} userName={nombreSaludoProcurador(user)} />
+            </div>
+            <div style={{ display: view === "miscausas" ? "contents" : "none" }}>
+              <MisCausas key={causasKey} email={user.email} initialRol={causaRolFoco} initialCausaId={causaIdFoco} initialProcurador={esSupervisor ? null : (user.nombre ?? null)} initialColor={causaColorFoco} />
+            </div>
+            <div style={{ display: view === "misdocumentos" ? "contents" : "none" }}>
+              <MisDocumentos email={user.email} />
+            </div>
+            <div style={{ display: view === "mismetricas" ? "contents" : "none" }}>
+              <MisMetricas email={user.email} />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
