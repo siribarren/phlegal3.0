@@ -19,6 +19,32 @@ async function bffFetch(path: string, init: RequestInit = {}): Promise<Response>
   });
 }
 
+// Cache en memoria del lado del cliente para lecturas de causas (se pierde al
+// recargar la página; no hay nada compartido entre usuarios ni servidor de
+// por medio). Guarda la promesa, no el resultado ya resuelto, así que
+// llamados concurrentes con la misma key comparten un solo request en vuelo
+// en vez de disparar uno cada uno. En error se limpia la entrada para no
+// dejar el fallo cacheado.
+const cache = new Map<string, { promise: Promise<unknown>; expiry: number }>();
+
+function withCache<T>(key: string, ttlMs: number, fetcher: () => Promise<T>): Promise<T> {
+  const now = Date.now();
+  const cached = cache.get(key);
+  if (cached && cached.expiry > now) return cached.promise as Promise<T>;
+  const promise = fetcher().catch(err => {
+    cache.delete(key);
+    throw err;
+  });
+  cache.set(key, { promise, expiry: now + ttlMs });
+  return promise;
+}
+
+// Se invalida todo el cache de causas cuando se hace login/logout, para no
+// arrastrar datos de una sesión de otro procurador.
+function limpiarCacheCausas() {
+  cache.clear();
+}
+
 export async function login(username: string, password: string): Promise<ApiUser> {
   const res = await bffFetch("/login", { method: "POST", body: JSON.stringify({ username, password }) });
   if (!res.ok) {
@@ -26,6 +52,7 @@ export async function login(username: string, password: string): Promise<ApiUser
     throw new Error(data?.detail || `Error de login (${res.status})`);
   }
   const data = await res.json();
+  limpiarCacheCausas();
   return data.user;
 }
 
@@ -38,11 +65,13 @@ export async function loginProcurador(username: string, password: string): Promi
     throw new Error(data?.detail || `Error de login (${res.status})`);
   }
   const data = await res.json();
+  limpiarCacheCausas();
   return data.user;
 }
 
 export async function logout(): Promise<void> {
   await bffFetch("/logout", { method: "POST" });
+  limpiarCacheCausas();
 }
 
 export async function fetchCurrentUser(): Promise<ApiUser | null> {
@@ -92,8 +121,10 @@ async function parseOrThrow<T>(res: Response, fallbackMsg: string): Promise<T> {
 }
 
 export async function fetchListadoCausas(params: ListadoCausasParams): Promise<CausaListadoResponse> {
-  const res = await bffFetch("/causas", { method: "POST", body: JSON.stringify(params) });
-  return parseOrThrow(res, "No fue posible obtener el listado de causas");
+  return withCache(`causas:${JSON.stringify(params)}`, 20_000, async () => {
+    const res = await bffFetch("/causas", { method: "POST", body: JSON.stringify(params) });
+    return parseOrThrow(res, "No fue posible obtener el listado de causas");
+  });
 }
 
 // ─── Mi Cartera (causas por color de semáforo) ─────────────────────────────
@@ -133,8 +164,10 @@ export interface MiCarteraParams {
 }
 
 export async function fetchMiCartera(params: MiCarteraParams): Promise<MiCarteraResponse> {
-  const res = await bffFetch("/mi-cartera", { method: "POST", body: JSON.stringify(params) });
-  return parseOrThrow(res, "No fue posible obtener tu cartera");
+  return withCache(`mi-cartera:${JSON.stringify(params)}`, 20_000, async () => {
+    const res = await bffFetch("/mi-cartera", { method: "POST", body: JSON.stringify(params) });
+    return parseOrThrow(res, "No fue posible obtener tu cartera");
+  });
 }
 
 export interface Procurador {
@@ -146,8 +179,10 @@ export interface Procurador {
 }
 
 export async function fetchProcuradores(): Promise<Procurador[]> {
-  const res = await bffFetch("/procuradores");
-  return parseOrThrow(res, "No fue posible obtener los procuradores");
+  return withCache("procuradores", 5 * 60_000, async () => {
+    const res = await bffFetch("/procuradores");
+    return parseOrThrow(res, "No fue posible obtener los procuradores");
+  });
 }
 
 // ─── Detalle de causa ───────────────────────────────────────────────────────
@@ -214,8 +249,10 @@ export interface CausaWeb {
 }
 
 export async function fetchCausaDetalle(causaId: number): Promise<CausaWeb> {
-  const res = await bffFetch(`/causas/${causaId}`);
-  return parseOrThrow(res, "No fue posible obtener el detalle de la causa");
+  return withCache(`causa:${causaId}`, 60_000, async () => {
+    const res = await bffFetch(`/causas/${causaId}`);
+    return parseOrThrow(res, "No fue posible obtener el detalle de la causa");
+  });
 }
 
 // ─── Home / dashboard ───────────────────────────────────────────────────────

@@ -44,6 +44,7 @@ export function passwordParaUsuario(username) {
 // (a diferencia de las cuentas normales, ver requireSession en routes.js).
 const CUENTAS_SUPERVISOR = [
   { username: "csantander", nombre: "Claudia Santander" },
+  { username: "snorambuena", nombre: "Sergio Norambuena" },
 ];
 
 export function cuentaSupervisor(username) {
