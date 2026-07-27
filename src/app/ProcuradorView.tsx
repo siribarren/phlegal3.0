@@ -3033,7 +3033,7 @@ export function MisCausas({
     }
   }
 
-  async function abrirPorRol(rol: string) {
+  async function abrirPorRol(rol: string, causaIdRespaldo?: number | null) {
     setCausaId(-1);
     setDetalle(null);
     setDetalleError(null);
@@ -3044,16 +3044,22 @@ export function MisCausas({
       if (!item) throw new Error(`No se encontró la causa ${rol}.`);
       await abrirDetalle(item.causa_id);
     } catch (err) {
+      // /mi_cartera trae un causa_id en un espacio de IDs propio, distinto al
+      // que usa /web_listado_causas y GET /causa/{id} — por eso no se usa
+      // como primera opción, pero se prueba como respaldo si la búsqueda por
+      // rol no encuentra nada.
+      if (causaIdRespaldo != null) {
+        await abrirDetalle(causaIdRespaldo);
+        return;
+      }
       setDetalleError(err instanceof Error ? err.message : "No fue posible cargar el detalle de la causa.");
       setDetalleLoading(false);
     }
   }
 
   useEffect(() => {
-    // Si ya sabemos el causa_id (viene de Mi Escritorio) se abre directo, sin
-    // depender de que la búsqueda por rol encuentre un match exacto.
-    if (initialCausaId != null) abrirDetalle(initialCausaId);
-    else if (initialRol) abrirPorRol(initialRol);
+    if (initialRol) abrirPorRol(initialRol, initialCausaId);
+    else if (initialCausaId != null) abrirDetalle(initialCausaId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialRol, initialCausaId]);
 
