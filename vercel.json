@@ -1,6 +1,6 @@
 {
   "rewrites": [
     { "source": "/bff/:path*", "destination": "/api/bff/:path*" },
-    { "source": "/((?!bff|assets|favicon).*)", "destination": "/index.html" }
+    { "source": "/:path*", "destination": "/index.html" }
   ]
 }
