@@ -9,7 +9,7 @@ import {
   isAccessTokenExpired,
 } from "./sessionStore.js";
 import { getSharedAccessToken } from "./sharedSession.js";
-import { derivarEmailPlataforma, passwordPlataforma } from "./platformAccounts.js";
+import { derivarEmailPlataforma, passwordParaUsuario } from "./platformAccounts.js";
 
 const SESSION_COOKIE = "phlegal_session";
 const COOKIE_OPTS = {
@@ -94,13 +94,14 @@ router.post("/procurador-login", async (req, res) => {
   if (!username || !password) {
     return res.status(422).json({ detail: "username y password son requeridos" });
   }
-  if (password !== passwordPlataforma()) {
+  const emailNormalizado = username.trim().toLowerCase();
+  const usernameLocal = emailNormalizado.split("@")[0];
+  if (password !== passwordParaUsuario(usernameLocal)) {
     return res.status(401).json({ detail: "Usuario o contraseña incorrectos." });
   }
   try {
     const sharedToken = await getSharedAccessToken();
     const procuradores = await pjud.fetchProcuradores(sharedToken);
-    const emailNormalizado = username.trim().toLowerCase();
     const procurador = procuradores.find(p => derivarEmailPlataforma(p.nombre) === emailNormalizado);
     if (!procurador) {
       return res.status(401).json({ detail: "Usuario o contraseña incorrectos." });

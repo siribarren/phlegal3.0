@@ -192,6 +192,20 @@ const NAV_ABOGADO = [
 
 const HIDDEN_FOR_MANDANTE = new Set(["micartera", "causas", "cobranza", "documentos", "acciones-masivas"]);
 
+// Nombre de pila a mostrar en el saludo de "Mi Escritorio" para cada cuenta
+// de procurador (el username es la parte del email antes de @phlegal.cl).
+const NOMBRE_PROCURADOR: Record<string, string> = {
+  mpinto: "Maria Paz",
+  acuevas: "Alejandro",
+  rhernandez: "Romina",
+  mmartinez: "Matías",
+};
+
+function nombreSaludoProcurador(user: LoginUser): string {
+  const username = user.email.split("@")[0];
+  return NOMBRE_PROCURADOR[username] ?? user.nombre?.split(" ")[0] ?? username;
+}
+
 function Sidebar({ active, onNav, user, onLogout }: { active: string; onNav: (id: string) => void; user: LoginUser; onLogout: () => void }) {
   const profile = PROFILES.find(p => p.id === user.profile)!;
   const initials = user.email.slice(0, 2).toUpperCase();
@@ -1172,7 +1186,7 @@ export default function App() {
         {view === "gastos" && <Placeholder title="Gastos judiciales" icon={Receipt} desc="Solicitud, aprobación, rendición y control de reembolsos de gastos asociados a receptores y trámites." />}
         {view === "consultas" && <Placeholder title="Consultas y mensajería" icon={MessageSquare} desc="Comunicación bidireccional entre abogados, procuradores, ejecutivos y mandantes con trazabilidad completa." />}
         {view === "admin" && <Placeholder title="Administración del sistema" icon={Settings} desc="Usuarios, roles, mandantes, catálogos, SLA, reglas de priorización e integraciones." />}
-        {isAbogado && view === "miescritorio" && <MiEscritorio onNavigate={setView} onAbrirCausa={abrirCausaDesdeEscritorio} email={user.email} />}
+        {isAbogado && view === "miescritorio" && <MiEscritorio onNavigate={setView} onAbrirCausa={abrirCausaDesdeEscritorio} email={user.email} userName={nombreSaludoProcurador(user)} />}
         {isAbogado && view === "miscausas" && <MisCausas key={causasKey} email={user.email} initialRol={causaRolFoco} initialProcurador={user.nombre ?? null} />}
         {isAbogado && view === "misdocumentos" && <MisDocumentos email={user.email} />}
         {isAbogado && view === "mismetricas" && <MisMetricas email={user.email} />}

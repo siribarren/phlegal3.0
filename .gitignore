@@ -4,3 +4,8 @@ dist/
 *.log
 .dev-server.pid
 .bff-server.pid
+.env
+.env.*
+!.env.example
+.vercel
+.env*

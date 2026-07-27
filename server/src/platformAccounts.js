@@ -28,3 +28,13 @@ export function derivarEmailPlataforma(nombreCompleto) {
 export function passwordPlataforma() {
   return process.env.PLATFORM_ACCOUNT_PASSWORD || "ignis2026";
 }
+
+// Excepciones de password por cuenta (username = parte del email antes de
+// @phlegal.cl). Cualquier cuenta no listada aquí usa passwordPlataforma().
+const PASSWORD_OVERRIDES = {
+  rzepeda: process.env.PLATFORM_ACCOUNT_PASSWORD_RZEPEDA,
+};
+
+export function passwordParaUsuario(username) {
+  return PASSWORD_OVERRIDES[username] || passwordPlataforma();
+}
