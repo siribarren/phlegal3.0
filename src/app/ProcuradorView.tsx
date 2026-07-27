@@ -2884,7 +2884,7 @@ function mapCausaWebToDetalle(c: CausaWeb): CausaDetalle {
   };
 }
 
-const PAGE_SIZE_OPCIONES = [50, 100, 200] as const;
+const PAGE_SIZE_OPCIONES = [50, 100, 200, "TODAS"] as const;
 
 export function MisCausas({
   email = "romina@abogado.cl",
@@ -2905,7 +2905,7 @@ export function MisCausas({
   const [busqueda, setBusqueda] = useState("");
   const [sortCol, setSortCol] = useState<ColKey | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [pageSize, setPageSize] = useState<number>(200);
+  const [pageSize, setPageSize] = useState<number | "TODAS">("TODAS");
   const [page, setPage] = useState(0);
 
   const [causaId, setCausaId] = useState<number | null>(null);
@@ -2930,43 +2930,67 @@ export function MisCausas({
 
   useEffect(() => { setPage(0); }, [estadoAdmFiltro, procedimientoFiltro, procuradorFiltro, colorFiltro, busqueda, pageSize]);
 
+  // web_listado_causas no filtra por color de semáforo, así que cuando hay un
+  // color seleccionado se usa /mi_cartera (mismo endpoint que las cards de Mi
+  // Escritorio), mapeado a la forma de fila que ya usa esta tabla.
+  function cargarPagina(numPagina: number, tamPagina: number): Promise<{ total: number; results: CausaListadoItem[] }> {
+    if (colorFiltro === "Todos") {
+      return fetchListadoCausas({
+        rol: busqueda.trim() || null,
+        procuradores: procuradorFiltro === "Todos" ? null : [procuradorFiltro],
+        est_adm: estadoAdmFiltro === "Todos" ? null : [estadoAdmFiltro],
+        proc: procedimientoFiltro === "Todos" ? null : [procedimientoFiltro],
+        page: numPagina,
+        page_size: tamPagina,
+      });
+    }
+    return fetchMiCartera({
+      colores: [colorFiltro],
+      rol: busqueda.trim() || null,
+      page: numPagina,
+      page_size: tamPagina,
+    }).then(res => ({
+      total: res.total,
+      results: res.causas.map(c => ({
+        causa_id: c.causa_id ?? 0,
+        semaforo: (c.color === "VERDE" || c.color === "AMARILLO" || c.color === "ROJO") ? c.color : null,
+        estado_deudor: null,
+        rol: c.rol,
+        numero_pagare: c.numero_pagare,
+        tribunal_nombre: c.tribunal,
+        cliente_nombre: c.cliente,
+        procurador_nombre: c.procurador_nombre ?? null,
+        fecha_ingreso: c.fecha_ingreso ?? "",
+        etapa: c.etapa ?? "",
+      })),
+    }));
+  }
+
   useEffect(() => {
     let cancelado = false;
     setLoading(true);
     setError(null);
-    // web_listado_causas no filtra por color de semáforo, así que cuando hay
-    // un color seleccionado se usa /mi_cartera (mismo endpoint que las cards
-    // de Mi Escritorio), mapeado a la forma de fila que ya usa esta tabla.
-    const promesa = colorFiltro === "Todos"
-      ? fetchListadoCausas({
-          rol: busqueda.trim() || null,
-          procuradores: procuradorFiltro === "Todos" ? null : [procuradorFiltro],
-          est_adm: estadoAdmFiltro === "Todos" ? null : [estadoAdmFiltro],
-          proc: procedimientoFiltro === "Todos" ? null : [procedimientoFiltro],
-          page: page + 1,
-          page_size: pageSize,
-        })
-      : fetchMiCartera({
-          colores: [colorFiltro],
-          rol: busqueda.trim() || null,
-          page: page + 1,
-          page_size: pageSize,
-        }).then(res => ({
-          total: res.total,
-          results: res.causas.map(c => ({
-            causa_id: c.causa_id ?? 0,
-            semaforo: (c.color === "VERDE" || c.color === "AMARILLO" || c.color === "ROJO") ? c.color : null,
-            estado_deudor: null,
-            rol: c.rol,
-            numero_pagare: c.numero_pagare,
-            tribunal_nombre: c.tribunal,
-            cliente_nombre: c.cliente,
-            procurador_nombre: c.procurador_nombre ?? null,
-            fecha_ingreso: c.fecha_ingreso ?? "",
-            etapa: c.etapa ?? "",
-          })),
-        }));
-    promesa
+
+    async function cargarTodo() {
+      if (pageSize !== "TODAS") {
+        return cargarPagina(page + 1, pageSize);
+      }
+      // "Todas": pagina automáticamente en bloques de 200 hasta agotar el
+      // total real, con un tope de seguridad.
+      const TAM_BLOQUE = 200;
+      const MAX_PAGINAS = 25;
+      const results: CausaListadoItem[] = [];
+      let total = 0;
+      for (let i = 1; i <= MAX_PAGINAS; i++) {
+        const res = await cargarPagina(i, TAM_BLOQUE);
+        results.push(...res.results);
+        total = res.total;
+        if (res.results.length < TAM_BLOQUE) break;
+      }
+      return { results, total };
+    }
+
+    cargarTodo()
       .then(res => {
         if (cancelado) return;
         setRows(res.results);
@@ -3029,7 +3053,7 @@ export function MisCausas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialRol]);
 
-  const totalPaginas = Math.max(1, Math.ceil(total / pageSize));
+  const totalPaginas = pageSize === "TODAS" ? 1 : Math.max(1, Math.ceil(total / pageSize));
 
   if (causaId !== null) {
     if (detalleLoading) {
@@ -3123,7 +3147,7 @@ export function MisCausas({
                 pageSize === opcion ? "bg-accent text-white border-accent" : "border-border text-foreground hover:bg-gray-50"
               }`}
             >
-              {opcion}
+              {opcion === "TODAS" ? "Todas" : opcion}
             </button>
           ))}
         </div>
