@@ -96,6 +96,47 @@ export async function fetchListadoCausas(params: ListadoCausasParams): Promise<C
   return parseOrThrow(res, "No fue posible obtener el listado de causas");
 }
 
+// ─── Mi Cartera (causas por color de semáforo) ─────────────────────────────
+
+export type ColorSemaforo = "VERDE" | "AMARILLO" | "ROJO" | "MORADO" | "SIN_GESTION";
+
+export interface MiCarteraCausaItem {
+  causa_id: number | null;
+  rol: string;
+  tribunal: string;
+  tipo_juicio: string | null;
+  fecha_ingreso: string | null;
+  cliente: string | null;
+  numero_pagare: string | null;
+  color: ColorSemaforo;
+  estado: string | null;
+  subestado: string | null;
+  etapa: string | null;
+  con_exhorto: boolean | null;
+  cuantia: number | null;
+  procurador_id?: number | null;
+  procurador_nombre?: string | null;
+}
+
+export interface MiCarteraResponse {
+  total: number;
+  page: number;
+  page_size: number;
+  causas: MiCarteraCausaItem[];
+}
+
+export interface MiCarteraParams {
+  colores?: ColorSemaforo[];
+  subestados?: string[];
+  page?: number;
+  page_size?: number;
+}
+
+export async function fetchMiCartera(params: MiCarteraParams): Promise<MiCarteraResponse> {
+  const res = await bffFetch("/mi-cartera", { method: "POST", body: JSON.stringify(params) });
+  return parseOrThrow(res, "No fue posible obtener tu cartera");
+}
+
 export interface Procurador {
   id: number;
   estudio_id: number;

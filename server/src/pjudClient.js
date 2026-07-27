@@ -76,4 +76,11 @@ export function fetchHome(token) {
   return pjudFetch("/home", { token });
 }
 
+// "Mi Cartera": listado de causas de un procurador filtrable por color de
+// semáforo (VERDE/AMARILLO/ROJO/MORADO/SIN_GESTION) y subestado. A diferencia
+// de /web_listado_causas, trae cuantia real y subestado por causa.
+export function fetchMiCartera(token, params = {}) {
+  return pjudFetch("/mi_cartera", { method: "POST", token, body: params });
+}
+
 export { PjudApiError };

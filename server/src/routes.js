@@ -34,6 +34,7 @@ async function requireSession(req, res, next) {
     try {
       req.accessToken = await getSharedAccessToken();
       req.procuradorNombre = session.procuradorNombre;
+      req.procuradorId = session.procuradorId;
       return next();
     } catch {
       return res.status(502).json({ detail: "No fue posible conectar con PJUD" });
@@ -115,6 +116,7 @@ router.post("/procurador-login", async (req, res) => {
     const sessionId = await createSession({
       platform: true,
       procuradorNombre: procurador.nombre,
+      procuradorId: procurador.id,
       user,
     });
     res.cookie(SESSION_COOKIE, sessionId, COOKIE_OPTS);
@@ -152,6 +154,21 @@ router.post("/causas", requireSession, async (req, res) => {
     res.json(data);
   } catch (err) {
     res.status(err.status ?? 502).json(err.body ?? { detail: "Error consultando causas" });
+  }
+});
+
+router.post("/mi-cartera", requireSession, async (req, res) => {
+  try {
+    // Igual que /causas: para cuentas de plataforma el procurador_id lo
+    // impone el servidor con el de la sesión, ignorando lo que mande el
+    // cliente.
+    const body = req.procuradorId
+      ? { ...(req.body ?? {}), procurador_id: req.procuradorId }
+      : (req.body ?? {});
+    const data = await pjud.fetchMiCartera(req.accessToken, body);
+    res.json(data);
+  } catch (err) {
+    res.status(err.status ?? 502).json(err.body ?? { detail: "Error consultando la cartera" });
   }
 });
 

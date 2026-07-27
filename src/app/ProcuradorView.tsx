@@ -12,7 +12,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line,
 } from "recharts";
-import { fetchListadoCausas, fetchCausaDetalle, fetchProcuradores, fetchHome, type CausaListadoItem, type CausaWeb } from "../lib/api";
+import { fetchListadoCausas, fetchCausaDetalle, fetchProcuradores, fetchMiCartera, type CausaListadoItem, type CausaWeb } from "../lib/api";
 
 // ─── Tipos ──────────────────────────────────────────────────────────────────
 
@@ -1675,11 +1675,15 @@ export function MiEscritorio({ onNavigate, onAbrirCausa, userName = "Romina", em
     let cancelado = false;
     setCarteraLoading(true);
     setCarteraError(null);
-    fetchHome()
-      .then(res => {
+    Promise.all([
+      fetchMiCartera({ colores: ["VERDE"], page_size: 1 }),
+      fetchMiCartera({ colores: ["AMARILLO"], page_size: 1 }),
+      fetchMiCartera({ colores: ["ROJO"], page_size: 1 }),
+    ])
+      .then(([verde, amarillo, rojo]) => {
         if (cancelado) return;
-        const s = res.semaforos.estudio;
-        setCartera({ total: s.total, estandar: s.verde, limite: s.amarillo, fuera: s.rojo });
+        const estandar = verde.total, limite = amarillo.total, fuera = rojo.total;
+        setCartera({ total: estandar + limite + fuera, estandar, limite, fuera });
       })
       .catch(err => {
         if (cancelado) return;
