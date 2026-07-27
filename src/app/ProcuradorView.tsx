@@ -2905,7 +2905,7 @@ export function MisCausas({
   const [busqueda, setBusqueda] = useState("");
   const [sortCol, setSortCol] = useState<ColKey | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [pageSize, setPageSize] = useState<number | "TODAS">("TODAS");
+  const [pageSize, setPageSize] = useState<number | "TODAS">(200);
   const [page, setPage] = useState(0);
 
   const [causaId, setCausaId] = useState<number | null>(null);
@@ -3176,7 +3176,7 @@ export function MisCausas({
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-[12px] text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Cargando causas...</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-[12px] text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />{pageSize === "TODAS" ? "Cargando toda la cartera, puede tardar unos segundos..." : "Cargando causas..."}</td></tr>
               )}
               {!loading && filtradas.map(c => (
                 <tr key={c.causa_id} onClick={() => abrirDetalle(c.causa_id)} className="border-b border-border last:border-0 cursor-pointer hover:bg-gray-50/70 transition-colors">
