@@ -265,13 +265,6 @@ WORK_ITEMS.forEach(item => {
   if (item.fechaSolicitud) item.estado = estadoDesdePlazoLegal(item.fechaSolicitud);
 });
 
-const VENCIMIENTOS_CRITICOS = [
-  { id: "v1", rol: "C-7199-2026", deudor: "Roberto Martínez Silva", accion: "Evacuar traslado", plazo: "Vence esta semana 17:00", critico: true },
-  { id: "v2", rol: "C-4477-2026", deudor: "Patricio Lemus Ortiz", accion: "Responder excepción", plazo: "Vence esta semana 18:00", critico: true },
-  { id: "v3", rol: "C-3211-2026", deudor: "Alejandro Vásquez Moreno", accion: "Apercibimiento: tener por no presentada", plazo: "Vence esta semana 18:00", critico: true },
-  { id: "v4", rol: "C-9187-2026", deudor: "Jorge Salinas Bravo", accion: "Acompañar título original", plazo: "Vence esta semana 09:00", critico: true },
-];
-
 const CASES: CaseRow[] = [
   { id: "c1", rol: "C-8421-2026", debtorRut: "12.345.678-9", deudor: "Carlos González Pérez", tribunal: "2° Juzgado Civil Santiago", etapa: "Notificación", cuantia: 21540000, exhorto: false, estado: "fuera", mandante: "BFN" },
   { id: "c2", rol: "C-7199-2026", debtorRut: "8.912.311-K", deudor: "Roberto Martínez Silva", tribunal: "2° Juzgado Civil Santiago", etapa: "Embargo pendiente", cuantia: 89200000, exhorto: false, estado: "fuera", mandante: "BFN" },
@@ -1676,6 +1669,7 @@ export function MiEscritorio({ onNavigate, onAbrirCausa, userName = "Romina", em
   const [responderConsulta, setResponderConsulta] = useState<WorkItem | null>(null);
   const [responderTodasConsultas, setResponderTodasConsultas] = useState<WorkItem[] | null>(null);
   const consultas = useMemo(() => items.filter(i => i.accionTipo === "consulta"), [items]);
+  const vencimientosCriticos = useMemo(() => items.filter(i => i.estado === "fuera").slice(0, 6), [items]);
 
   useEffect(() => {
     let cancelado = false;
@@ -2182,20 +2176,23 @@ export function MiEscritorio({ onNavigate, onAbrirCausa, userName = "Romina", em
               <h3 className="text-xs font-semibold text-foreground">Vencimientos críticos</h3>
             </div>
             <div className="space-y-2.5">
-              {VENCIMIENTOS_CRITICOS.map(v => (
+              {vencimientosCriticos.map(v => (
                 <div
                   key={v.id}
                   onClick={() => onAbrirCausa?.(v.rol)}
-                  className={`p-2.5 rounded-lg border cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 hover:bg-red-100 hover:border-red-300 ${v.critico ? "bg-red-50 border-red-200" : "bg-gray-50 border-border"}`}
+                  className="p-2.5 rounded-lg border cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 hover:bg-red-100 hover:border-red-300 bg-red-50 border-red-200"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-mono text-[11px] font-semibold text-foreground">{v.rol}</span>
                     <EstadoBadge estado="fuera" />
                   </div>
                   <p className="text-[11px] text-muted-foreground truncate mt-0.5">{v.deudor}</p>
-                  <p className="text-[11px] text-foreground font-medium mt-0.5">{v.accion}</p>
+                  <p className="text-[11px] text-foreground font-medium mt-0.5">{ACCION_META[v.accionTipo].label}</p>
                 </div>
               ))}
+              {vencimientosCriticos.length === 0 && !itemsLoading && (
+                <p className="text-[11px] text-muted-foreground">Sin vencimientos críticos.</p>
+              )}
             </div>
           </div>
 
