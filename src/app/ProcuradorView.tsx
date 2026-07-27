@@ -150,25 +150,18 @@ function normalizarTexto(s: string): string {
     .trim();
 }
 
-// Subestados CRM reales que corresponden a cada bucket de "Bandeja de trabajo".
-// Los 3 buckets vigentes (confirmados en producción): apercibimiento, previo
-// y fuerza_publica. Se guardan algunas variantes de redacción por si el CRM
-// no usa siempre exactamente la misma frase.
-const SUBESTADOS_BANDEJA = [
-  "Acompaña documentos",
-  "Cumple lo ordenado",
-  "Solicita fuerza pública para retiro",
-];
-
-const SUBESTADO_A_ACCION: Record<string, AccionTipo> = {
-  [normalizarTexto("Acompaña documentos")]: "apercibimiento",
-  [normalizarTexto("Acompañar documentos")]: "apercibimiento",
-  [normalizarTexto("Cumple lo ordenado")]: "previo",
-  [normalizarTexto("Cumplir lo ordenado")]: "previo",
-  [normalizarTexto("Solicita fuerza pública para retiro")]: "fuerza_publica",
-  [normalizarTexto("Solicita fuerza pública")]: "fuerza_publica",
-  [normalizarTexto("Solicitar fuerza pública")]: "fuerza_publica",
-};
+// El texto real del subestado en el CRM trae palabras extra que varían
+// (ej. "ACOMPAÑA DOCUMENTOS AL TRIBUNAL", no solo "Acompaña documentos"), así
+// que no se puede filtrar server-side por igualdad exacta: se pide toda la
+// cartera y se matchea por substring normalizado (sin tildes, minúsculas).
+function accionTipoParaSubestado(subestado: string | null | undefined): AccionTipo | undefined {
+  if (!subestado) return undefined;
+  const n = normalizarTexto(subestado);
+  if (n.includes("acompana documentos")) return "apercibimiento";
+  if (n.includes("cumple lo ordenado") || n.includes("cumplir lo ordenado")) return "previo";
+  if (n.includes("solicita fuerza publica") || n.includes("solicitar fuerza publica")) return "fuerza_publica";
+  return undefined;
+}
 
 function primerLitiganteDeudor(cuadernos: CausaWeb["cuadernos"]): string {
   for (const cuad of cuadernos) {
@@ -178,20 +171,22 @@ function primerLitiganteDeudor(cuadernos: CausaWeb["cuadernos"]): string {
   return cuadernos[0]?.litigantes[0]?.nombre ?? "-";
 }
 
-// Trae la cartera real del procurador logueado (el servidor ya fuerza el
-// procurador_id de la sesión) filtrada server-side por los 3 subestados de
-// gestión activa. /mi_cartera ya trae cuantia, subestado, color y causa_id,
-// así que solo se pide el detalle (fetchCausaDetalle) para completar el
-// nombre del deudor, que ese endpoint no entrega.
+// Trae toda la cartera real del procurador logueado (el servidor ya fuerza
+// el procurador_id de la sesión) y arma la bandeja con las causas cuyo
+// subestado matchea alguno de los 3 buckets de gestión (ver
+// accionTipoParaSubestado). /mi_cartera ya trae cuantia, subestado, color y
+// causa_id, así que solo se pide el detalle (fetchCausaDetalle) para
+// completar el nombre del deudor, que ese endpoint no entrega.
 async function cargarBandejaDesdeApi(): Promise<WorkItem[]> {
   const PAGE_SIZE = 200;
-  const MAX_PAGINAS = 10;
-  const candidatas: MiCarteraCausaItem[] = [];
+  const MAX_PAGINAS = 15;
+  const todas: MiCarteraCausaItem[] = [];
   for (let page = 1; page <= MAX_PAGINAS; page++) {
-    const data = await fetchMiCartera({ subestados: SUBESTADOS_BANDEJA, page, page_size: PAGE_SIZE });
-    candidatas.push(...data.causas);
+    const data = await fetchMiCartera({ page, page_size: PAGE_SIZE });
+    todas.push(...data.causas);
     if (data.causas.length < PAGE_SIZE) break;
   }
+  const candidatas = todas.filter(c => accionTipoParaSubestado(c.subestado) !== undefined);
 
   const CONCURRENCIA = 6;
   const items: WorkItem[] = [];
@@ -202,7 +197,7 @@ async function cargarBandejaDesdeApi(): Promise<WorkItem[]> {
     );
     detalles.forEach((detalle, idx) => {
       const causa = lote[idx];
-      const accionTipo = SUBESTADO_A_ACCION[normalizarTexto(causa.subestado ?? "")];
+      const accionTipo = accionTipoParaSubestado(causa.subestado);
       if (!accionTipo) return;
       items.push({
         id: String(causa.causa_id),
@@ -1650,7 +1645,7 @@ function AnalisisIAModal({
 
 // ─── MiEscritorio ───────────────────────────────────────────────────────────
 
-export function MiEscritorio({ onNavigate, onAbrirCausa, userName = "Romina", email = "romina@abogado.cl" }: { onNavigate?: (view: string) => void; onAbrirCausa?: (rol: string) => void; userName?: string; email?: string }) {
+export function MiEscritorio({ onNavigate, onAbrirCausa, onVerTodasRojas, userName = "Romina", email = "romina@abogado.cl" }: { onNavigate?: (view: string) => void; onAbrirCausa?: (rol: string) => void; onVerTodasRojas?: () => void; userName?: string; email?: string }) {
   const [items, setItems] = useState<WorkItem[]>([]);
   const [itemsLoading, setItemsLoading] = useState(true);
   const [itemsError, setItemsError] = useState<string | null>(null);
@@ -1675,33 +1670,25 @@ export function MiEscritorio({ onNavigate, onAbrirCausa, userName = "Romina", em
   const [criticas, setCriticas] = useState<MiCarteraCausaItem[]>([]);
   const [criticasTotal, setCriticasTotal] = useState(0);
   const [criticasLoading, setCriticasLoading] = useState(true);
-  const [criticasExpandido, setCriticasExpandido] = useState(false);
-  const [criticasTodas, setCriticasTodas] = useState<MiCarteraCausaItem[] | null>(null);
-  const [criticasTodasLoading, setCriticasTodasLoading] = useState(false);
+  const [criticasError, setCriticasError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelado = false;
     setCriticasLoading(true);
+    setCriticasError(null);
     fetchMiCartera({ colores: ["ROJO"], page_size: 4 })
       .then(res => {
         if (cancelado) return;
         setCriticas(res.causas);
         setCriticasTotal(res.total);
       })
-      .catch(() => {})
+      .catch(err => {
+        if (cancelado) return;
+        setCriticasError(err instanceof Error ? err.message : "No fue posible cargar las causas críticas.");
+      })
       .finally(() => { if (!cancelado) setCriticasLoading(false); });
     return () => { cancelado = true; };
   }, []);
-
-  function verTodasLasCriticas() {
-    setCriticasExpandido(true);
-    if (criticasTodas !== null) return;
-    setCriticasTodasLoading(true);
-    fetchMiCartera({ colores: ["ROJO"], page_size: Math.min(criticasTotal, 500) })
-      .then(res => setCriticasTodas(res.causas))
-      .catch(() => setCriticasTodas([]))
-      .finally(() => setCriticasTodasLoading(false));
-  }
 
   useEffect(() => {
     let cancelado = false;
@@ -2217,8 +2204,10 @@ export function MiEscritorio({ onNavigate, onAbrirCausa, userName = "Romina", em
               <CalendarClock className="w-4 h-4 text-red-500" />
               <h3 className="text-xs font-semibold text-foreground">Vencimientos críticos</h3>
             </div>
-            <div className={`space-y-2.5 ${criticasExpandido ? "max-h-[420px] overflow-y-auto pr-1" : ""}`}>
-              {(criticasExpandido ? criticasTodas ?? [] : criticas).map(v => (
+            {criticasError && <p className="text-[11px] text-red-600">{criticasError}</p>}
+            {!criticasError && (
+            <div className="space-y-2.5">
+              {criticas.map(v => (
                 <div
                   key={v.causa_id ?? v.rol}
                   onClick={() => onAbrirCausa?.(v.rol)}
@@ -2232,27 +2221,17 @@ export function MiEscritorio({ onNavigate, onAbrirCausa, userName = "Romina", em
                   <p className="text-[11px] text-foreground font-medium mt-0.5">{v.subestado ?? v.etapa ?? "-"}</p>
                 </div>
               ))}
-              {criticasExpandido && criticasTodasLoading && (
-                <p className="text-[11px] text-muted-foreground text-center py-2">Cargando…</p>
-              )}
               {!criticasLoading && criticasTotal === 0 && (
                 <p className="text-[11px] text-muted-foreground">Sin vencimientos críticos.</p>
               )}
             </div>
-            {!criticasExpandido && criticasTotal > criticas.length && (
+            )}
+            {!criticasError && criticasTotal > criticas.length && (
               <button
-                onClick={verTodasLasCriticas}
+                onClick={() => onVerTodasRojas?.()}
                 className="w-full mt-2.5 text-[11px] font-medium text-accent hover:underline text-center"
               >
                 Ver más ({criticasTotal} en total)
-              </button>
-            )}
-            {criticasExpandido && (
-              <button
-                onClick={() => setCriticasExpandido(false)}
-                className="w-full mt-2.5 text-[11px] font-medium text-accent hover:underline text-center"
-              >
-                Ver menos
               </button>
             )}
           </div>
@@ -2911,7 +2890,8 @@ export function MisCausas({
   email = "romina@abogado.cl",
   initialRol = null,
   initialProcurador = null,
-}: { email?: string; initialRol?: string | null; initialProcurador?: string | null } = {}) {
+  initialColor = null,
+}: { email?: string; initialRol?: string | null; initialProcurador?: string | null; initialColor?: "VERDE" | "AMARILLO" | "ROJO" | null } = {}) {
   const [rows, setRows] = useState<CausaListadoItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -2920,6 +2900,7 @@ export function MisCausas({
   const [estadoAdmFiltro, setEstadoAdmFiltro] = useState("Todos");
   const [procedimientoFiltro, setProcedimientoFiltro] = useState("Todos");
   const [procuradorFiltro, setProcuradorFiltro] = useState(initialProcurador || "Todos");
+  const [colorFiltro, setColorFiltro] = useState<"Todos" | "VERDE" | "AMARILLO" | "ROJO">(initialColor ?? "Todos");
   const [procuradorOpciones, setProcuradorOpciones] = useState<string[]>([]);
   const [busqueda, setBusqueda] = useState("");
   const [sortCol, setSortCol] = useState<ColKey | null>(null);
@@ -2947,20 +2928,45 @@ export function MisCausas({
       .catch(() => {});
   }, []);
 
-  useEffect(() => { setPage(0); }, [estadoAdmFiltro, procedimientoFiltro, procuradorFiltro, busqueda, pageSize]);
+  useEffect(() => { setPage(0); }, [estadoAdmFiltro, procedimientoFiltro, procuradorFiltro, colorFiltro, busqueda, pageSize]);
 
   useEffect(() => {
     let cancelado = false;
     setLoading(true);
     setError(null);
-    fetchListadoCausas({
-      rol: busqueda.trim() || null,
-      procuradores: procuradorFiltro === "Todos" ? null : [procuradorFiltro],
-      est_adm: estadoAdmFiltro === "Todos" ? null : [estadoAdmFiltro],
-      proc: procedimientoFiltro === "Todos" ? null : [procedimientoFiltro],
-      page: page + 1,
-      page_size: pageSize,
-    })
+    // web_listado_causas no filtra por color de semáforo, así que cuando hay
+    // un color seleccionado se usa /mi_cartera (mismo endpoint que las cards
+    // de Mi Escritorio), mapeado a la forma de fila que ya usa esta tabla.
+    const promesa = colorFiltro === "Todos"
+      ? fetchListadoCausas({
+          rol: busqueda.trim() || null,
+          procuradores: procuradorFiltro === "Todos" ? null : [procuradorFiltro],
+          est_adm: estadoAdmFiltro === "Todos" ? null : [estadoAdmFiltro],
+          proc: procedimientoFiltro === "Todos" ? null : [procedimientoFiltro],
+          page: page + 1,
+          page_size: pageSize,
+        })
+      : fetchMiCartera({
+          colores: [colorFiltro],
+          rol: busqueda.trim() || null,
+          page: page + 1,
+          page_size: pageSize,
+        }).then(res => ({
+          total: res.total,
+          results: res.causas.map(c => ({
+            causa_id: c.causa_id ?? 0,
+            semaforo: (c.color === "VERDE" || c.color === "AMARILLO" || c.color === "ROJO") ? c.color : null,
+            estado_deudor: null,
+            rol: c.rol,
+            numero_pagare: c.numero_pagare,
+            tribunal_nombre: c.tribunal,
+            cliente_nombre: c.cliente,
+            procurador_nombre: c.procurador_nombre ?? null,
+            fecha_ingreso: c.fecha_ingreso ?? "",
+            etapa: c.etapa ?? "",
+          })),
+        }));
+    promesa
       .then(res => {
         if (cancelado) return;
         setRows(res.results);
@@ -2974,7 +2980,7 @@ export function MisCausas({
       })
       .finally(() => { if (!cancelado) setLoading(false); });
     return () => { cancelado = true; };
-  }, [estadoAdmFiltro, procedimientoFiltro, procuradorFiltro, busqueda, page, pageSize]);
+  }, [estadoAdmFiltro, procedimientoFiltro, procuradorFiltro, colorFiltro, busqueda, page, pageSize]);
 
   const filtradas = useMemo(() => {
     if (!sortCol) return rows;
@@ -3057,13 +3063,22 @@ export function MisCausas({
             <p className="text-gray-400 text-[11px] mt-0.5">Criterios operativos</p>
           </div>
           <button
-            onClick={() => { setEstadoAdmFiltro("Todos"); setProcedimientoFiltro("Todos"); setProcuradorFiltro("Todos"); setBusqueda(""); }}
+            onClick={() => { setEstadoAdmFiltro("Todos"); setProcedimientoFiltro("Todos"); setProcuradorFiltro("Todos"); setColorFiltro("Todos"); setBusqueda(""); }}
             className="px-4 py-2 rounded-lg bg-gray-800 text-white text-xs font-medium hover:bg-gray-700 transition-colors"
           >
             Limpiar filtros
           </button>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-5">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 p-5">
+          <div>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Semáforo</p>
+            <select value={colorFiltro} onChange={e => setColorFiltro(e.target.value as typeof colorFiltro)} className="w-full text-xs border border-border rounded-lg px-3 py-2 bg-card focus:outline-none text-foreground">
+              <option value="Todos">Todos</option>
+              <option value="VERDE">Verde</option>
+              <option value="AMARILLO">Amarillo</option>
+              <option value="ROJO">Rojo</option>
+            </select>
+          </div>
           <div>
             <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Estado Adm.</p>
             <select value={estadoAdmFiltro} onChange={e => setEstadoAdmFiltro(e.target.value)} className="w-full text-xs border border-border rounded-lg px-3 py-2 bg-card focus:outline-none text-foreground">
