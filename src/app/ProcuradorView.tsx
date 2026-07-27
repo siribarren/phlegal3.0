@@ -12,7 +12,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line,
 } from "recharts";
-import { fetchListadoCausas, fetchCausaDetalle, fetchProcuradores, fetchMiCartera, type CausaListadoItem, type CausaWeb } from "../lib/api";
+import { fetchListadoCausas, fetchCausaDetalle, fetchProcuradores, fetchMiCartera, type CausaListadoItem, type CausaWeb, type MiCarteraCausaItem } from "../lib/api";
 
 // ─── Tipos ──────────────────────────────────────────────────────────────────
 
@@ -29,6 +29,7 @@ interface WorkItem {
   exhorto: boolean;
   tribunalExhortado?: string;
   estado: EstadoSLA;
+  semaforo?: "VERDE" | "AMARILLO" | "ROJO";
   accionTipo: AccionTipo;
   plazo?: string;
   plazoUrgente?: boolean;
@@ -150,15 +151,23 @@ function normalizarTexto(s: string): string {
 }
 
 // Subestados CRM reales que corresponden a cada bucket de "Bandeja de trabajo".
-// El label de cada bucket en ACCION_META usa exactamente estas frases.
+// Los 3 buckets vigentes (confirmados en producción): apercibimiento, previo
+// y fuerza_publica. Se guardan algunas variantes de redacción por si el CRM
+// no usa siempre exactamente la misma frase.
+const SUBESTADOS_BANDEJA = [
+  "Acompaña documentos",
+  "Cumple lo ordenado",
+  "Solicita fuerza pública para retiro",
+];
+
 const SUBESTADO_A_ACCION: Record<string, AccionTipo> = {
+  [normalizarTexto("Acompaña documentos")]: "apercibimiento",
   [normalizarTexto("Acompañar documentos")]: "apercibimiento",
   [normalizarTexto("Cumple lo ordenado")]: "previo",
   [normalizarTexto("Cumplir lo ordenado")]: "previo",
+  [normalizarTexto("Solicita fuerza pública para retiro")]: "fuerza_publica",
   [normalizarTexto("Solicita fuerza pública")]: "fuerza_publica",
   [normalizarTexto("Solicitar fuerza pública")]: "fuerza_publica",
-  [normalizarTexto("Encargar receptor")]: "despachese",
-  [normalizarTexto("Designación de martillero")]: "designacion_martillero",
 };
 
 function primerLitiganteDeudor(cuadernos: CausaWeb["cuadernos"]): string {
@@ -169,51 +178,45 @@ function primerLitiganteDeudor(cuadernos: CausaWeb["cuadernos"]): string {
   return cuadernos[0]?.litigantes[0]?.nombre ?? "-";
 }
 
-// Trae la cartera real del procurador logueado (el servidor ya filtra por
-// sesión), y arma la bandeja de trabajo solo con las causas cuyo subestado
-// CRM matchea alguno de los buckets de gestión (ver SUBESTADO_A_ACCION). El
-// listado no trae subestado_crm ni el nombre del deudor, así que el detalle
-// se pide aparte (fetchCausaDetalle) solo para las causas candidatas.
+// Trae la cartera real del procurador logueado (el servidor ya fuerza el
+// procurador_id de la sesión) filtrada server-side por los 3 subestados de
+// gestión activa. /mi_cartera ya trae cuantia, subestado, color y causa_id,
+// así que solo se pide el detalle (fetchCausaDetalle) para completar el
+// nombre del deudor, que ese endpoint no entrega.
 async function cargarBandejaDesdeApi(): Promise<WorkItem[]> {
   const PAGE_SIZE = 200;
-  const MAX_PAGINAS = 20;
-  const causas: CausaListadoItem[] = [];
+  const MAX_PAGINAS = 10;
+  const candidatas: MiCarteraCausaItem[] = [];
   for (let page = 1; page <= MAX_PAGINAS; page++) {
-    const data = await fetchListadoCausas({ page, page_size: PAGE_SIZE });
-    const results = data.results ?? [];
-    causas.push(...results);
-    if (results.length < PAGE_SIZE) break;
+    const data = await fetchMiCartera({ subestados: SUBESTADOS_BANDEJA, page, page_size: PAGE_SIZE });
+    candidatas.push(...data.causas);
+    if (data.causas.length < PAGE_SIZE) break;
   }
-
-  const candidatas = causas.filter(c => {
-    const sub = (c as { subestado_crm?: string | null }).subestado_crm;
-    return !!sub && normalizarTexto(sub) in SUBESTADO_A_ACCION;
-  });
 
   const CONCURRENCIA = 6;
   const items: WorkItem[] = [];
   for (let i = 0; i < candidatas.length; i += CONCURRENCIA) {
-    const lote = candidatas.slice(i, i + CONCURRENCIA);
+    const lote = candidatas.filter(c => c.causa_id != null).slice(i, i + CONCURRENCIA);
     const detalles = await Promise.all(
-      lote.map(c => fetchCausaDetalle(c.causa_id).catch(() => null))
+      lote.map(c => fetchCausaDetalle(c.causa_id!).catch(() => null))
     );
     detalles.forEach((detalle, idx) => {
-      if (!detalle || !detalle.subestado_crm) return;
-      const accionTipo = SUBESTADO_A_ACCION[normalizarTexto(detalle.subestado_crm)];
-      if (!accionTipo) return;
       const causa = lote[idx];
+      const accionTipo = SUBESTADO_A_ACCION[normalizarTexto(causa.subestado ?? "")];
+      if (!accionTipo) return;
       items.push({
         id: String(causa.causa_id),
-        rol: detalle.rol,
-        deudor: primerLitiganteDeudor(detalle.cuadernos),
-        tribunal: detalle.tribunal_nombre,
-        mandante: detalle.cliente_nombre ?? "-",
-        cuantia: 0,
-        exhorto: detalle.exhortos_asociados.length > 0,
-        tribunalExhortado: detalle.exhortos_asociados[0]?.tribunal_nombre,
-        estado: detalle.semaforo ? SEMAFORO_A_ESTADO[detalle.semaforo] : "estandar",
+        rol: causa.rol,
+        deudor: detalle ? primerLitiganteDeudor(detalle.cuadernos) : "-",
+        tribunal: causa.tribunal,
+        mandante: causa.cliente ?? "-",
+        cuantia: causa.cuantia ?? 0,
+        exhorto: causa.con_exhorto ?? false,
+        tribunalExhortado: detalle?.exhortos_asociados[0]?.tribunal_nombre,
+        estado: SEMAFORO_A_ESTADO[causa.color as "VERDE" | "AMARILLO" | "ROJO"] ?? "estandar",
+        semaforo: ["VERDE", "AMARILLO", "ROJO"].includes(causa.color) ? (causa.color as "VERDE" | "AMARILLO" | "ROJO") : undefined,
         accionTipo,
-        fechaSolicitud: causa.fecha_ingreso,
+        fechaSolicitud: causa.fecha_ingreso ?? undefined,
       });
     });
   }
@@ -1669,7 +1672,36 @@ export function MiEscritorio({ onNavigate, onAbrirCausa, userName = "Romina", em
   const [responderConsulta, setResponderConsulta] = useState<WorkItem | null>(null);
   const [responderTodasConsultas, setResponderTodasConsultas] = useState<WorkItem[] | null>(null);
   const consultas = useMemo(() => items.filter(i => i.accionTipo === "consulta"), [items]);
-  const vencimientosCriticos = useMemo(() => items.filter(i => i.estado === "fuera").slice(0, 6), [items]);
+  const [criticas, setCriticas] = useState<MiCarteraCausaItem[]>([]);
+  const [criticasTotal, setCriticasTotal] = useState(0);
+  const [criticasLoading, setCriticasLoading] = useState(true);
+  const [criticasExpandido, setCriticasExpandido] = useState(false);
+  const [criticasTodas, setCriticasTodas] = useState<MiCarteraCausaItem[] | null>(null);
+  const [criticasTodasLoading, setCriticasTodasLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelado = false;
+    setCriticasLoading(true);
+    fetchMiCartera({ colores: ["ROJO"], page_size: 4 })
+      .then(res => {
+        if (cancelado) return;
+        setCriticas(res.causas);
+        setCriticasTotal(res.total);
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelado) setCriticasLoading(false); });
+    return () => { cancelado = true; };
+  }, []);
+
+  function verTodasLasCriticas() {
+    setCriticasExpandido(true);
+    if (criticasTodas !== null) return;
+    setCriticasTodasLoading(true);
+    fetchMiCartera({ colores: ["ROJO"], page_size: Math.min(criticasTotal, 500) })
+      .then(res => setCriticasTodas(res.causas))
+      .catch(() => setCriticasTodas([]))
+      .finally(() => setCriticasTodasLoading(false));
+  }
 
   useEffect(() => {
     let cancelado = false;
@@ -1985,6 +2017,9 @@ export function MiEscritorio({ onNavigate, onAbrirCausa, userName = "Romina", em
                               </span>
                             ) : (
                               <>
+                                {item.semaforo && (
+                                  <span title={`Semáforo: ${item.semaforo}`} className={`w-2 h-2 rounded-full ${SEMAFORO_DOT[item.semaforo]}`} />
+                                )}
                                 <EstadoBadge estado={item.estado} />
                                 {item.fechaSolicitud && item.estado !== "estandar" && <PlazoLegalBadge fechaSolicitud={item.fechaSolicitud} />}
                               </>
@@ -2082,6 +2117,9 @@ export function MiEscritorio({ onNavigate, onAbrirCausa, userName = "Romina", em
                               </span>
                             ) : (
                               <>
+                                {item.semaforo && (
+                                  <span title={`Semáforo: ${item.semaforo}`} className={`w-2 h-2 rounded-full ${SEMAFORO_DOT[item.semaforo]}`} />
+                                )}
                                 <EstadoBadge estado={item.estado} />
                                 {item.fechaSolicitud && item.estado !== "estandar" && <PlazoLegalBadge fechaSolicitud={item.fechaSolicitud} />}
                               </>
@@ -2179,10 +2217,10 @@ export function MiEscritorio({ onNavigate, onAbrirCausa, userName = "Romina", em
               <CalendarClock className="w-4 h-4 text-red-500" />
               <h3 className="text-xs font-semibold text-foreground">Vencimientos críticos</h3>
             </div>
-            <div className="space-y-2.5">
-              {vencimientosCriticos.map(v => (
+            <div className={`space-y-2.5 ${criticasExpandido ? "max-h-[420px] overflow-y-auto pr-1" : ""}`}>
+              {(criticasExpandido ? criticasTodas ?? [] : criticas).map(v => (
                 <div
-                  key={v.id}
+                  key={v.causa_id ?? v.rol}
                   onClick={() => onAbrirCausa?.(v.rol)}
                   className="p-2.5 rounded-lg border cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 hover:bg-red-100 hover:border-red-300 bg-red-50 border-red-200"
                 >
@@ -2190,14 +2228,33 @@ export function MiEscritorio({ onNavigate, onAbrirCausa, userName = "Romina", em
                     <span className="font-mono text-[11px] font-semibold text-foreground">{v.rol}</span>
                     <EstadoBadge estado="fuera" />
                   </div>
-                  <p className="text-[11px] text-muted-foreground truncate mt-0.5">{v.deudor}</p>
-                  <p className="text-[11px] text-foreground font-medium mt-0.5">{ACCION_META[v.accionTipo].label}</p>
+                  <p className="text-[11px] text-muted-foreground truncate mt-0.5">{v.cliente ?? "-"}</p>
+                  <p className="text-[11px] text-foreground font-medium mt-0.5">{v.subestado ?? v.etapa ?? "-"}</p>
                 </div>
               ))}
-              {vencimientosCriticos.length === 0 && !itemsLoading && (
+              {criticasExpandido && criticasTodasLoading && (
+                <p className="text-[11px] text-muted-foreground text-center py-2">Cargando…</p>
+              )}
+              {!criticasLoading && criticasTotal === 0 && (
                 <p className="text-[11px] text-muted-foreground">Sin vencimientos críticos.</p>
               )}
             </div>
+            {!criticasExpandido && criticasTotal > criticas.length && (
+              <button
+                onClick={verTodasLasCriticas}
+                className="w-full mt-2.5 text-[11px] font-medium text-accent hover:underline text-center"
+              >
+                Ver más ({criticasTotal} en total)
+              </button>
+            )}
+            {criticasExpandido && (
+              <button
+                onClick={() => setCriticasExpandido(false)}
+                className="w-full mt-2.5 text-[11px] font-medium text-accent hover:underline text-center"
+              >
+                Ver menos
+              </button>
+            )}
           </div>
 
           {/* Resumen del mes */}
@@ -2867,7 +2924,7 @@ export function MisCausas({
   const [busqueda, setBusqueda] = useState("");
   const [sortCol, setSortCol] = useState<ColKey | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [pageSize, setPageSize] = useState<number>(50);
+  const [pageSize, setPageSize] = useState<number>(200);
   const [page, setPage] = useState(0);
 
   const [causaId, setCausaId] = useState<number | null>(null);
