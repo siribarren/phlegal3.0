@@ -163,56 +163,43 @@ function accionTipoParaSubestado(subestado: string | null | undefined): AccionTi
   return undefined;
 }
 
-function primerLitiganteDeudor(cuadernos: CausaWeb["cuadernos"] | null | undefined): string {
-  for (const cuad of cuadernos ?? []) {
-    const deudor = (cuad.litigantes ?? []).find(l => normalizarTexto(l.calidad).includes("ddo"));
-    if (deudor) return deudor.nombre;
-  }
-  return cuadernos?.[0]?.litigantes?.[0]?.nombre ?? "-";
-}
-
 // Trae toda la cartera real del procurador logueado (el servidor ya fuerza
 // el procurador_id de la sesión) y arma la bandeja con las causas cuyo
 // subestado matchea alguno de los 3 buckets de gestión (ver
-// accionTipoParaSubestado). /mi_cartera ya trae cuantia, subestado, color y
-// causa_id, así que solo se pide el detalle (fetchCausaDetalle) para
-// completar el nombre del deudor, que ese endpoint no entrega.
+// accionTipoParaSubestado). Ya no se pide el detalle de cada causa
+// (fetchCausaDetalle) para sacar el nombre del deudor — esa segunda tanda de
+// requests era el mayor costo de tiempo; a cambio la tarjeta ya no muestra
+// deudor, solo lo que /mi_cartera entrega directo. La paginación se dispara
+// en paralelo (ya con el total de la primera página) en vez de una por una.
 async function cargarBandejaDesdeApi(): Promise<WorkItem[]> {
   const PAGE_SIZE = 200;
   const MAX_PAGINAS = 15;
-  const todas: MiCarteraCausaItem[] = [];
-  for (let page = 1; page <= MAX_PAGINAS; page++) {
-    const data = await fetchMiCartera({ page, page_size: PAGE_SIZE });
-    todas.push(...data.causas);
-    if (data.causas.length < PAGE_SIZE) break;
-  }
-  const candidatas = todas.filter(c => accionTipoParaSubestado(c.subestado) !== undefined);
-
-  const CONCURRENCIA = 6;
-  const items: WorkItem[] = [];
-  for (let i = 0; i < candidatas.length; i += CONCURRENCIA) {
-    const lote = candidatas.filter(c => c.causa_id != null).slice(i, i + CONCURRENCIA);
-    const detalles = await Promise.all(
-      lote.map(c => fetchCausaDetalle(c.causa_id!).catch(() => null))
+  const primera = await fetchMiCartera({ page: 1, page_size: PAGE_SIZE });
+  const todas: MiCarteraCausaItem[] = [...primera.causas];
+  const totalPaginas = Math.min(MAX_PAGINAS, Math.ceil(primera.total / PAGE_SIZE));
+  if (totalPaginas > 1) {
+    const resto = await Promise.all(
+      Array.from({ length: totalPaginas - 1 }, (_, i) => fetchMiCartera({ page: i + 2, page_size: PAGE_SIZE }))
     );
-    detalles.forEach((detalle, idx) => {
-      const causa = lote[idx];
-      const accionTipo = accionTipoParaSubestado(causa.subestado);
-      if (!accionTipo) return;
-      items.push({
-        id: String(causa.causa_id),
-        rol: causa.rol,
-        deudor: detalle ? primerLitiganteDeudor(detalle.cuadernos) : "-",
-        tribunal: causa.tribunal,
-        mandante: causa.cliente ?? "-",
-        cuantia: causa.cuantia ?? 0,
-        exhorto: causa.con_exhorto ?? false,
-        tribunalExhortado: detalle?.exhortos_asociados[0]?.tribunal_nombre,
-        estado: SEMAFORO_A_ESTADO[causa.color as "VERDE" | "AMARILLO" | "ROJO"] ?? "estandar",
-        semaforo: ["VERDE", "AMARILLO", "ROJO"].includes(causa.color) ? (causa.color as "VERDE" | "AMARILLO" | "ROJO") : undefined,
-        accionTipo,
-        fechaSolicitud: causa.fecha_ingreso ?? undefined,
-      });
+    resto.forEach(r => todas.push(...r.causas));
+  }
+
+  const items: WorkItem[] = [];
+  for (const causa of todas) {
+    const accionTipo = accionTipoParaSubestado(causa.subestado);
+    if (!accionTipo) continue;
+    items.push({
+      id: String(causa.causa_id),
+      rol: causa.rol,
+      deudor: "-",
+      tribunal: causa.tribunal,
+      mandante: causa.cliente ?? "-",
+      cuantia: causa.cuantia ?? 0,
+      exhorto: causa.con_exhorto ?? false,
+      estado: SEMAFORO_A_ESTADO[causa.color as "VERDE" | "AMARILLO" | "ROJO"] ?? "estandar",
+      semaforo: ["VERDE", "AMARILLO", "ROJO"].includes(causa.color) ? (causa.color as "VERDE" | "AMARILLO" | "ROJO") : undefined,
+      accionTipo,
+      fechaSolicitud: causa.fecha_ingreso ?? undefined,
     });
   }
   return items;
