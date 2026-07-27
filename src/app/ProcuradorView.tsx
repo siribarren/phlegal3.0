@@ -1035,16 +1035,21 @@ const SEMAFORO_A_ESTADO: Record<NonNullable<CausaDetalle["semaforo"]>, EstadoSLA
 };
 
 // El semáforo solo se calcula una vez que la causa entra a gestión de cobranza;
-// causas en trámite de exhorto u otras etapas preliminares llegan con semaforo=null.
-function SemaforoBadge({ semaforo }: { semaforo: "VERDE" | "AMARILLO" | "ROJO" | null | undefined }) {
-  if (!semaforo) {
+// causas en trámite de exhorto u otras etapas preliminares llegan con
+// semaforo=null. La API real también puede traer colores fuera de
+// VERDE/AMARILLO/ROJO (ej. MORADO, SIN_GESTION) que no tienen bucket de SLA
+// propio, así que cualquier valor no mapeado cae al mismo badge "Sin gestión"
+// en vez de romper el render.
+function SemaforoBadge({ semaforo }: { semaforo: string | null | undefined }) {
+  const estado = semaforo ? SEMAFORO_A_ESTADO[semaforo as "VERDE" | "AMARILLO" | "ROJO"] : undefined;
+  if (!estado) {
     return (
       <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-500 border border-gray-200">
-        <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />Sin gestión
+        <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />{semaforo || "Sin gestión"}
       </span>
     );
   }
-  return <EstadoBadge estado={SEMAFORO_A_ESTADO[semaforo]} />;
+  return <EstadoBadge estado={estado} />;
 }
 
 const SEMAFORO_BLOQUE: Record<NonNullable<CausaDetalle["semaforo"]>, string> = {
@@ -2583,7 +2588,7 @@ function CausaDetalleView({ causa, onVolver, onIrACausa }: { causa: CausaDetalle
         </div>
 
         <div className={`flex flex-wrap items-center justify-between gap-x-6 gap-y-1.5 border rounded-xl px-4 py-2.5 text-[12px] transition-colors ${
-          causa.semaforo ? SEMAFORO_BLOQUE[causa.semaforo] : "bg-gray-50 border-border"
+          (causa.semaforo && SEMAFORO_BLOQUE[causa.semaforo]) || "bg-gray-50 border-border"
         }`}>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5">
             <span className="text-muted-foreground">Estado Causa: <span className="font-semibold text-foreground">{causa.estadoCausa ?? "-"}</span></span>
