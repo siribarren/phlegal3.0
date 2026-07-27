@@ -141,6 +141,85 @@ const ESTADO_META: Record<EstadoSLA, { label: string; dot: string; bg: string; t
   fuera: { label: "Crítico", dot: "bg-red-500", bg: "bg-red-50", text: "text-red-700", border: "border-red-200", hoverBorder: "hover:border-red-400" },
 };
 
+function normalizarTexto(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+// Subestados CRM reales que corresponden a cada bucket de "Bandeja de trabajo".
+// El label de cada bucket en ACCION_META usa exactamente estas frases.
+const SUBESTADO_A_ACCION: Record<string, AccionTipo> = {
+  [normalizarTexto("Acompañar documentos")]: "apercibimiento",
+  [normalizarTexto("Cumple lo ordenado")]: "previo",
+  [normalizarTexto("Cumplir lo ordenado")]: "previo",
+  [normalizarTexto("Solicita fuerza pública")]: "fuerza_publica",
+  [normalizarTexto("Solicitar fuerza pública")]: "fuerza_publica",
+  [normalizarTexto("Encargar receptor")]: "despachese",
+  [normalizarTexto("Designación de martillero")]: "designacion_martillero",
+};
+
+function primerLitiganteDeudor(cuadernos: CausaWeb["cuadernos"]): string {
+  for (const cuad of cuadernos) {
+    const deudor = cuad.litigantes.find(l => normalizarTexto(l.calidad).includes("ddo"));
+    if (deudor) return deudor.nombre;
+  }
+  return cuadernos[0]?.litigantes[0]?.nombre ?? "-";
+}
+
+// Trae la cartera real del procurador logueado (el servidor ya filtra por
+// sesión), y arma la bandeja de trabajo solo con las causas cuyo subestado
+// CRM matchea alguno de los buckets de gestión (ver SUBESTADO_A_ACCION). El
+// listado no trae subestado_crm ni el nombre del deudor, así que el detalle
+// se pide aparte (fetchCausaDetalle) solo para las causas candidatas.
+async function cargarBandejaDesdeApi(): Promise<WorkItem[]> {
+  const PAGE_SIZE = 200;
+  const MAX_PAGINAS = 20;
+  const causas: CausaListadoItem[] = [];
+  for (let page = 1; page <= MAX_PAGINAS; page++) {
+    const data = await fetchListadoCausas({ page, page_size: PAGE_SIZE });
+    const results = data.results ?? [];
+    causas.push(...results);
+    if (results.length < PAGE_SIZE) break;
+  }
+
+  const candidatas = causas.filter(c => {
+    const sub = (c as { subestado_crm?: string | null }).subestado_crm;
+    return !!sub && normalizarTexto(sub) in SUBESTADO_A_ACCION;
+  });
+
+  const CONCURRENCIA = 6;
+  const items: WorkItem[] = [];
+  for (let i = 0; i < candidatas.length; i += CONCURRENCIA) {
+    const lote = candidatas.slice(i, i + CONCURRENCIA);
+    const detalles = await Promise.all(
+      lote.map(c => fetchCausaDetalle(c.causa_id).catch(() => null))
+    );
+    detalles.forEach((detalle, idx) => {
+      if (!detalle || !detalle.subestado_crm) return;
+      const accionTipo = SUBESTADO_A_ACCION[normalizarTexto(detalle.subestado_crm)];
+      if (!accionTipo) return;
+      const causa = lote[idx];
+      items.push({
+        id: String(causa.causa_id),
+        rol: detalle.rol,
+        deudor: primerLitiganteDeudor(detalle.cuadernos),
+        tribunal: detalle.tribunal_nombre,
+        mandante: detalle.cliente_nombre ?? "-",
+        cuantia: 0,
+        exhorto: detalle.exhortos_asociados.length > 0,
+        tribunalExhortado: detalle.exhortos_asociados[0]?.tribunal_nombre,
+        estado: detalle.semaforo ? SEMAFORO_A_ESTADO[detalle.semaforo] : "estandar",
+        accionTipo,
+        fechaSolicitud: causa.fecha_ingreso,
+      });
+    });
+  }
+  return items;
+}
+
 const WORK_ITEMS: WorkItem[] = [
   { id: "w1", rol: "C-7199-2026", deudor: "Roberto Martínez Silva", tribunal: "2° Juzgado Civil Santiago", mandante: "SNC", cuantia: 89200000, exhorto: false, estado: "fuera", accionTipo: "apercibimiento", plazo: "Vence esta semana 18:00", plazoUrgente: true , fechaSolicitud: "2026-07-21" },
   { id: "w2", rol: "C-3211-2026", deudor: "Alejandro Vásquez Moreno", tribunal: "1° Juzgado Civil Puente Alto", mandante: "ITAU", cuantia: 6200000, exhorto: false, estado: "fuera", accionTipo: "apercibimiento", plazo: "Vence esta semana 18:00", plazoUrgente: true , fechaSolicitud: "2026-07-20" },
@@ -1576,7 +1655,9 @@ function AnalisisIAModal({
 // ─── MiEscritorio ───────────────────────────────────────────────────────────
 
 export function MiEscritorio({ onNavigate, onAbrirCausa, userName = "Romina", email = "romina@abogado.cl" }: { onNavigate?: (view: string) => void; onAbrirCausa?: (rol: string) => void; userName?: string; email?: string }) {
-  const [items, setItems] = useState(WORK_ITEMS);
+  const [items, setItems] = useState<WorkItem[]>([]);
+  const [itemsLoading, setItemsLoading] = useState(true);
+  const [itemsError, setItemsError] = useState<string | null>(null);
   const [cartera, setCartera] = useState(CARTERA);
   const [carteraLoading, setCarteraLoading] = useState(true);
   const [carteraError, setCarteraError] = useState<string | null>(null);
@@ -1611,6 +1692,20 @@ export function MiEscritorio({ onNavigate, onAbrirCausa, userName = "Romina", em
         setCarteraError(err instanceof Error ? err.message : "No fue posible cargar el resumen de cartera.");
       })
       .finally(() => { if (!cancelado) setCarteraLoading(false); });
+    return () => { cancelado = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelado = false;
+    setItemsLoading(true);
+    setItemsError(null);
+    cargarBandejaDesdeApi()
+      .then(reales => { if (!cancelado) setItems(reales); })
+      .catch(err => {
+        if (cancelado) return;
+        setItemsError(err instanceof Error ? err.message : "No fue posible cargar la bandeja de trabajo.");
+      })
+      .finally(() => { if (!cancelado) setItemsLoading(false); });
     return () => { cancelado = true; };
   }, []);
 
@@ -1785,7 +1880,22 @@ export function MiEscritorio({ onNavigate, onAbrirCausa, userName = "Romina", em
             )}
           </div>
 
-          {grupos.length === 0 && (
+          {itemsLoading && (
+            <div className="bg-card rounded-xl border border-border p-10 text-center">
+              <Loader2 className="w-8 h-8 text-muted-foreground mx-auto mb-2 animate-spin" />
+              <p className="text-sm font-medium text-foreground">Cargando tus causas...</p>
+            </div>
+          )}
+
+          {!itemsLoading && itemsError && (
+            <div className="bg-card rounded-xl border border-red-200 bg-red-50 p-10 text-center">
+              <AlertTriangle className="w-8 h-8 text-red-500 mx-auto mb-2" />
+              <p className="text-sm font-medium text-foreground">No fue posible cargar tu bandeja</p>
+              <p className="text-[12px] text-muted-foreground mt-1">{itemsError}</p>
+            </div>
+          )}
+
+          {!itemsLoading && !itemsError && grupos.length === 0 && (
             <div className="bg-card rounded-xl border border-border p-10 text-center">
               <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
               <p className="text-sm font-medium text-foreground">Bandeja al día</p>
