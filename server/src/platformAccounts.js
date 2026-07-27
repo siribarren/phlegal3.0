@@ -38,3 +38,14 @@ const PASSWORD_OVERRIDES = {
 export function passwordParaUsuario(username) {
   return PASSWORD_OVERRIDES[username] || passwordPlataforma();
 }
+
+// Cuentas de plataforma "supervisor": no son procuradores reales de PJUD, así
+// que no quedan atadas a un procurador y ven la cartera completa del estudio
+// (a diferencia de las cuentas normales, ver requireSession en routes.js).
+const CUENTAS_SUPERVISOR = [
+  { username: "csantander", nombre: "Claudia Santander" },
+];
+
+export function cuentaSupervisor(username) {
+  return CUENTAS_SUPERVISOR.find(c => c.username === username) ?? null;
+}

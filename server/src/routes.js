@@ -9,7 +9,7 @@ import {
   isAccessTokenExpired,
 } from "./sessionStore.js";
 import { getSharedAccessToken } from "./sharedSession.js";
-import { derivarEmailPlataforma, passwordParaUsuario } from "./platformAccounts.js";
+import { derivarEmailPlataforma, passwordParaUsuario, cuentaSupervisor } from "./platformAccounts.js";
 
 const SESSION_COOKIE = "phlegal_session";
 const COOKIE_OPTS = {
@@ -100,6 +100,22 @@ router.post("/procurador-login", async (req, res) => {
   if (password !== passwordParaUsuario(usernameLocal)) {
     return res.status(401).json({ detail: "Usuario o contraseña incorrectos." });
   }
+
+  const supervisor = cuentaSupervisor(usernameLocal);
+  if (supervisor) {
+    // Sin procuradorNombre/procuradorId en la sesión: requireSession no
+    // fuerza ningún filtro, así que ve la cartera completa del estudio.
+    const user = {
+      email: emailNormalizado,
+      nombre: supervisor.nombre,
+      roles: ["procurador", "supervisor"],
+      estudioId: null,
+    };
+    const sessionId = await createSession({ platform: true, user });
+    res.cookie(SESSION_COOKIE, sessionId, COOKIE_OPTS);
+    return res.json({ user });
+  }
+
   try {
     const sharedToken = await getSharedAccessToken();
     const procuradores = await pjud.fetchProcuradores(sharedToken);

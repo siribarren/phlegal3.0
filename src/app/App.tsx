@@ -1145,6 +1145,9 @@ export default function App() {
   const [causasKey, setCausasKey] = useState(0);
   const isMandante = user?.profile === "mandante";
   const isAbogado = user?.profile === "abogado";
+  // Cuentas "supervisor" (ej. Claudia Santander) no quedan atadas a un
+  // procurador: ven la cartera completa del estudio, no solo la propia.
+  const esSupervisor = !!user?.roles?.includes("supervisor");
   const { title, sub } = view === "dashboard" && isMandante
     ? { title: "Vista Mandante", sub: "Estudios de cobranza asociados" }
     : META[view] ?? { title: view, sub: "" };
@@ -1201,7 +1204,7 @@ export default function App() {
         {view === "consultas" && <Placeholder title="Consultas y mensajería" icon={MessageSquare} desc="Comunicación bidireccional entre abogados, procuradores, ejecutivos y mandantes con trazabilidad completa." />}
         {view === "admin" && <Placeholder title="Administración del sistema" icon={Settings} desc="Usuarios, roles, mandantes, catálogos, SLA, reglas de priorización e integraciones." />}
         {isAbogado && view === "miescritorio" && <MiEscritorio onNavigate={setView} onAbrirCausa={abrirCausaDesdeEscritorio} onVerTodasRojas={verCausasRojasDesdeEscritorio} email={user.email} userName={nombreSaludoProcurador(user)} />}
-        {isAbogado && view === "miscausas" && <MisCausas key={causasKey} email={user.email} initialRol={causaRolFoco} initialCausaId={causaIdFoco} initialProcurador={user.nombre ?? null} initialColor={causaColorFoco} />}
+        {isAbogado && view === "miscausas" && <MisCausas key={causasKey} email={user.email} initialRol={causaRolFoco} initialCausaId={causaIdFoco} initialProcurador={esSupervisor ? null : (user.nombre ?? null)} initialColor={causaColorFoco} />}
         {isAbogado && view === "misdocumentos" && <MisDocumentos email={user.email} />}
         {isAbogado && view === "mismetricas" && <MisMetricas email={user.email} />}
       </div>
