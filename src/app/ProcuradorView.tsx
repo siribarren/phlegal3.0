@@ -281,7 +281,7 @@ const PDF_SAMPLES = [
 const PDF_ESCRITOS = ["/docs/escrito1_tsf.pdf", "/docs/escrito2_snc.pdf", "/docs/escrito2_tsf.pdf"];
 // "Solicitar fuerza pública" tiene un formato único y estándar: se usa el
 // mismo documento para todas las causas del lote, sin rotar entre plantillas.
-const PDF_FUERZA_PUBLICA = "/docs/escrito1_tsf.pdf";
+const PDF_FUERZA_PUBLICA = "/docs/fuerza_publica.pdf";
 const PDF_LITIGANTES = ["/docs/litigantes1_snc.pdf", "/docs/litigantes2_snc.pdf"];
 const PDF_MANDATO = "/docs/mandato_snc.pdf";
 const PDF_PAGARE = "/docs/pagare_snc.pdf";
@@ -1138,14 +1138,7 @@ const SUBIDA_PASOS = [
   { titulo: "Guardando tarea realizada en el historial de la causa", desc: "Registrando la actividad en la bitácora de cada causa." },
 ];
 
-interface CamposPersonalizados {
-  tribunal: string;
-  mandante: string;
-  monto: string;
-  fecha: string;
-  abogado: string;
-  deudor: string;
-}
+type CamposPersonalizados = Record<string, string>;
 
 interface EscritoGenerado {
   causaRol: string;
@@ -1157,6 +1150,25 @@ interface EscritoGenerado {
 
 function cuerpoEscrito(label: string, rol: string, campos: CamposPersonalizados) {
   return `En autos Rol ${rol}, caratulados "${campos.mandante} con ${campos.deudor}", seguidos ante el ${campos.tribunal}, el abogado patrocinante ${campos.abogado} viene en dar cumplimiento a lo ordenado por el tribunal, acompañando los antecedentes correspondientes a "${label}" por la suma de ${campos.monto}, con fecha ${campos.fecha}. Solicito a S.S. tener por cumplido lo ordenado y continuar con la tramitación de la causa conforme a derecho.`;
+}
+
+// Patente sintética y determinística (no hay dato real de vehículo en la
+// cartera) solo para completar el modelo del escrito de fuerza pública.
+function patenteMock(rol: string): string {
+  const letras = "BCDFGHJKLMNPQRSTVWXYZ";
+  const digitos = rol.replace(/\D/g, "");
+  const seed = digitos ? parseInt(digitos, 10) : rol.length;
+  const l = (n: number) => letras[n % letras.length];
+  const dosDigitos = String((seed % 90) + 10);
+  const unDigito = String((seed % 9) + 1);
+  return `${l(seed)}${l(seed >> 2)}${l(seed >> 4)}${l(seed >> 6)}.${dosDigitos}-${unDigito}`;
+}
+
+function cuerpoFuerzaPublica(rol: string, tribunal: string, mandante: string, deudor: string, patente: string) {
+  const rolHeader = `ROL ${rol}`;
+  const rolInline = `Rol ${rol}`;
+  const caratulado = `${mandante} con ${deudor}`;
+  return `${rolHeader} — ${tribunal}. En autos ejecutivos caratulados "${caratulado}", ${rolInline}, vengo en solicitar a S.S. se sirva decretar el retiro del vehículo embargado, placa patente ${patente}, concediendo el auxilio de la fuerza pública, con facultades de allanamiento y descerrajamiento si fuere necesario, habilitando día, hora y lugares inhábiles, oficiando al efecto a la comisaría de Carabineros de Chile que corresponda.`;
 }
 
 function resaltarCamposPersonalizados(texto: string, campos: CamposPersonalizados) {
@@ -1325,22 +1337,34 @@ function AnalisisIAModal({
   const pasoActual = Math.min(IA_PASOS.length - 1, Math.floor(progreso / (100 / IA_PASOS.length)));
   const segundosRestantes = Math.max(0, Math.ceil(((100 - progreso) / 100) * 6));
 
+  const esFuerzaPublica = meta.label === ACCION_META.fuerza_publica.label;
+
   const generarEscritosPara = (seleccion: WorkItem[]) => {
     setIdsAEjecutar(seleccion.map(i => i.id));
     setEscritos(seleccion.map((i, idx) => {
-      const campos: CamposPersonalizados = {
-        tribunal: i.tribunal,
-        mandante: i.mandante,
-        monto: fCLP(i.cuantia),
-        fecha: "20-07-2026",
-        abogado: "Romina Fuentes",
-        deudor: i.deudor,
-      };
+      const campos: CamposPersonalizados = esFuerzaPublica
+        ? {
+            rolHeader: `ROL ${i.rol}`,
+            tribunal: i.tribunal,
+            caratulado: `${i.mandante} con ${i.deudor}`,
+            patente: patenteMock(i.rol),
+            rolInline: `Rol ${i.rol}`,
+          }
+        : {
+            tribunal: i.tribunal,
+            mandante: i.mandante,
+            monto: fCLP(i.cuantia),
+            fecha: "20-07-2026",
+            abogado: "Romina Fuentes",
+            deudor: i.deudor,
+          };
       return {
         causaRol: i.rol,
         tipo: meta.label,
-        pdfUrl: meta.label === ACCION_META.fuerza_publica.label ? PDF_FUERZA_PUBLICA : PDF_ESCRITOS[idx % PDF_ESCRITOS.length],
-        cuerpo: cuerpoEscrito(meta.label, i.rol, campos),
+        pdfUrl: esFuerzaPublica ? PDF_FUERZA_PUBLICA : PDF_ESCRITOS[idx % PDF_ESCRITOS.length],
+        cuerpo: esFuerzaPublica
+          ? cuerpoFuerzaPublica(i.rol, i.tribunal, i.mandante, i.deudor, campos.patente)
+          : cuerpoEscrito(meta.label, i.rol, campos),
         campos,
       };
     }));
