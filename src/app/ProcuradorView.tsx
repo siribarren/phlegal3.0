@@ -279,6 +279,9 @@ const PDF_SAMPLES = [
 ];
 
 const PDF_ESCRITOS = ["/docs/escrito1_tsf.pdf", "/docs/escrito2_snc.pdf", "/docs/escrito2_tsf.pdf"];
+// "Solicitar fuerza pública" tiene un formato único y estándar: se usa el
+// mismo documento para todas las causas del lote, sin rotar entre plantillas.
+const PDF_FUERZA_PUBLICA = "/docs/escrito1_tsf.pdf";
 const PDF_LITIGANTES = ["/docs/litigantes1_snc.pdf", "/docs/litigantes2_snc.pdf"];
 const PDF_MANDATO = "/docs/mandato_snc.pdf";
 const PDF_PAGARE = "/docs/pagare_snc.pdf";
@@ -1336,7 +1339,7 @@ function AnalisisIAModal({
       return {
         causaRol: i.rol,
         tipo: meta.label,
-        pdfUrl: PDF_ESCRITOS[idx % PDF_ESCRITOS.length],
+        pdfUrl: meta.label === ACCION_META.fuerza_publica.label ? PDF_FUERZA_PUBLICA : PDF_ESCRITOS[idx % PDF_ESCRITOS.length],
         cuerpo: cuerpoEscrito(meta.label, i.rol, campos),
         campos,
       };
@@ -1402,8 +1405,8 @@ function AnalisisIAModal({
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className={`bg-card border border-border rounded-2xl shadow-2xl w-full overflow-hidden ${etapa === "revision" ? "max-w-xl" : "max-w-md"}`}>
-        <div className="flex items-start gap-3 px-6 pt-6 pb-4">
+      <div className={`bg-card border border-border rounded-2xl shadow-2xl w-full max-h-[85vh] flex flex-col ${etapa === "revision" ? "max-w-xl" : "max-w-md"}`}>
+        <div className="flex items-start gap-3 px-6 pt-6 pb-4 shrink-0">
           <div className="w-9 h-9 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
             <Sparkles className="w-4.5 h-4.5 text-accent" />
           </div>
@@ -1415,6 +1418,8 @@ function AnalisisIAModal({
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        <div className="overflow-y-auto min-h-0">
 
         {etapa === "progreso" && (
           <div className="px-6 pb-6 space-y-4">
@@ -1622,6 +1627,7 @@ function AnalisisIAModal({
             </button>
           </div>
         )}
+        </div>
       </div>
 
       {verEscrito && <EscritoPdfOverlay escrito={verEscrito} onClose={() => setVerEscrito(null)} />}
