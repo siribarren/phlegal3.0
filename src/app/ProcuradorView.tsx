@@ -197,7 +197,7 @@ async function cargarBandejaDesdeApi(): Promise<WorkItem[]> {
     if (!accionTipo) continue;
     items.push({
       id: causa.causa_id != null ? String(causa.causa_id) : `sin-id-${items.length}`,
-      rol: causa.rol,
+      rol: causa.rol.trim(),
       deudor: "-",
       tribunal: causa.tribunal,
       mandante: causa.cliente ?? "-",
@@ -3073,21 +3073,27 @@ export function MisCausas({
     setDetalle(null);
     setDetalleError(null);
     setDetalleLoading(true);
+    const rolBusqueda = rol.trim();
+    const tieneRespaldo = causaIdRespaldo != null && Number.isFinite(causaIdRespaldo);
     try {
-      const res = await fetchListadoCausas({ rol, page: 1, page_size: 1 });
+      const res = await fetchListadoCausas({ rol: rolBusqueda, page: 1, page_size: 1 });
       const item = res.results[0];
-      if (!item) throw new Error(`No se encontró la causa ${rol}.`);
+      if (!item) throw new Error(`No se encontró la causa ${rolBusqueda}.`);
       await abrirDetalle(item.causa_id);
     } catch (err) {
       // /mi_cartera trae un causa_id en un espacio de IDs propio, distinto al
       // que usa /web_listado_causas y GET /causa/{id} — por eso no se usa
       // como primera opción, pero se prueba como respaldo si la búsqueda por
       // rol no encuentra nada.
-      if (causaIdRespaldo != null) {
-        await abrirDetalle(causaIdRespaldo);
+      if (tieneRespaldo) {
+        await abrirDetalle(causaIdRespaldo as number);
         return;
       }
-      setDetalleError(err instanceof Error ? err.message : "No fue posible cargar el detalle de la causa.");
+      setDetalleError(
+        err instanceof Error
+          ? `${err.message} Es posible que esta causa aún no esté sincronizada en el sistema.`
+          : "No fue posible cargar el detalle de la causa."
+      );
       setDetalleLoading(false);
     }
   }
