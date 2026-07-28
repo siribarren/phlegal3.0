@@ -212,6 +212,15 @@ async function cargarBandejaDesdeApi(): Promise<WorkItem[]> {
   return items;
 }
 
+// La ejecución de tareas en la Bandeja de Trabajo (marcar realizado, subir
+// escrito, etc.) es una acción del BFF/demo que no reescribe el semáforo real
+// en PJUD. Sin este registro, la causa queda en verde en la bandeja pero al
+// abrir su detalle real (GET /causa/{id}) se sigue viendo el semáforo viejo
+// (p. ej. rojo) porque viene del backend, no del estado local. Se guarda acá
+// para que CausaDetalleView pueda reflejar el mismo estado "al día" que ya
+// muestra la bandeja, sin depender de que ambas vistas compartan un store.
+const causasResueltasLocalmente = new Map<string, string>();
+
 const WORK_ITEMS: WorkItem[] = [
   { id: "w1", rol: "C-7199-2026", deudor: "Roberto Martínez Silva", tribunal: "2° Juzgado Civil Santiago", mandante: "SNC", cuantia: 89200000, exhorto: false, estado: "fuera", accionTipo: "apercibimiento", plazo: "Vence esta semana 18:00", plazoUrgente: true , fechaSolicitud: "2026-07-21" },
   { id: "w2", rol: "C-3211-2026", deudor: "Alejandro Vásquez Moreno", tribunal: "1° Juzgado Civil Puente Alto", mandante: "ITAU", cuantia: 6200000, exhorto: false, estado: "fuera", accionTipo: "apercibimiento", plazo: "Vence esta semana 18:00", plazoUrgente: true , fechaSolicitud: "2026-07-20" },
@@ -1823,6 +1832,7 @@ export function MiEscritorio({ onNavigate, onAbrirCausa, onVerTodasRojas, userNa
           if (causaDetalle) causaDetalle.semaforo = "VERDE";
 
           if (i.accionTipo === "consulta") return;
+          causasResueltasLocalmente.set(i.rol.trim(), fechaRealizacion);
           registrarHistorial(i.rol, {
             fecha: formatFechaCL(fechaRealizacion),
             autor: userName,
@@ -3029,7 +3039,7 @@ export function MisCausas({
     cargarTodo()
       .then(res => {
         if (cancelado) return;
-        setRows(res.results);
+        setRows(res.results.map(r => causasResueltasLocalmente.has(r.rol.trim()) ? { ...r, semaforo: "VERDE" } : r));
         setTotal(res.total);
       })
       .catch(err => {
@@ -3060,7 +3070,11 @@ export function MisCausas({
     setDetalleLoading(true);
     try {
       const causaWeb = await fetchCausaDetalle(id);
-      setDetalle(mapCausaWebToDetalle(causaWeb));
+      const mapeada = mapCausaWebToDetalle(causaWeb);
+      if (causasResueltasLocalmente.has(mapeada.rol.trim())) {
+        mapeada.semaforo = "VERDE";
+      }
+      setDetalle(mapeada);
     } catch (err) {
       setDetalleError(err instanceof Error ? err.message : "No fue posible cargar el detalle de la causa.");
     } finally {
