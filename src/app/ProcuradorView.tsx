@@ -185,11 +185,18 @@ async function cargarBandejaDesdeApi(): Promise<WorkItem[]> {
   }
 
   const items: WorkItem[] = [];
+  const vistos = new Set<number>();
   for (const causa of todas) {
+    // La paginación de /mi_cartera puede repetir filas entre páginas
+    // (ver mismo caso en server/src/routes.js); evita contarlas dos veces.
+    if (causa.causa_id != null) {
+      if (vistos.has(causa.causa_id)) continue;
+      vistos.add(causa.causa_id);
+    }
     const accionTipo = accionTipoParaSubestado(causa.subestado);
     if (!accionTipo) continue;
     items.push({
-      id: String(causa.causa_id),
+      id: causa.causa_id != null ? String(causa.causa_id) : `sin-id-${items.length}`,
       rol: causa.rol,
       deudor: "-",
       tribunal: causa.tribunal,
@@ -683,7 +690,13 @@ function fCLP(n: number) { return "$" + (n / 1_000_000).toFixed(1) + "M"; }
 
 function plazoSinHora(plazo: string) { return plazo.replace(/\s+\d{1,2}:\d{2}$/, ""); }
 
-const HOY_ISO = "2026-07-20";
+function hoyISO() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
 
 function formatFechaCL(iso: string) {
   const [y, m, d] = iso.split("-");
@@ -697,7 +710,7 @@ function Destacado({ children }: { children: React.ReactNode }) {
 function ConfirmarRealizadoModal({
   item, label, onCancelar, onConfirmar, onRevisar,
 }: { item: WorkItem; label: string; onCancelar: () => void; onConfirmar: (fecha: string) => void; onRevisar: () => void }) {
-  const [fecha, setFecha] = useState(HOY_ISO);
+  const [fecha, setFecha] = useState(hoyISO);
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onCancelar}>
@@ -716,7 +729,7 @@ function ConfirmarRealizadoModal({
             <input
               type="date"
               value={fecha}
-              max={HOY_ISO}
+              max={hoyISO()}
               onChange={e => setFecha(e.target.value)}
               className="w-full text-xs border border-border rounded-lg px-3 py-2 bg-card focus:outline-none text-foreground"
             />
@@ -735,7 +748,7 @@ function ConfirmarRealizadoModal({
 function ConfirmarRealizadoMasivoModal({
   items, label, onCancelar, onConfirmar,
 }: { items: WorkItem[]; label: string; onCancelar: () => void; onConfirmar: (fecha: string) => void }) {
-  const [fecha, setFecha] = useState(HOY_ISO);
+  const [fecha, setFecha] = useState(hoyISO);
   const roles = items.map(i => i.rol).join(", ");
   const mandantes = [...new Set(items.map(i => i.mandante))].join(", ");
 
@@ -756,7 +769,7 @@ function ConfirmarRealizadoMasivoModal({
             <input
               type="date"
               value={fecha}
-              max={HOY_ISO}
+              max={hoyISO()}
               onChange={e => setFecha(e.target.value)}
               className="w-full text-xs border border-border rounded-lg px-3 py-2 bg-card focus:outline-none text-foreground"
             />
@@ -1761,7 +1774,7 @@ export function MiEscritorio({ onNavigate, onAbrirCausa, onVerTodasRojas, userNa
     });
   }
 
-  function ejecutar(ids: string[], mensaje: string, fechaRealizacion: string = HOY_ISO) {
+  function ejecutar(ids: string[], mensaje: string, fechaRealizacion: string = hoyISO()) {
     setFinishingIds(prev => { const n = new Set(prev); ids.forEach(id => n.add(id)); return n; });
     window.setTimeout(() => {
       setItems(prev => {
@@ -1799,7 +1812,7 @@ export function MiEscritorio({ onNavigate, onAbrirCausa, onVerTodasRojas, userNa
 
   function enviarRespuestaConsulta(item: WorkItem, respuesta: string) {
     registrarHistorial(item.rol, {
-      fecha: formatFechaCL(HOY_ISO),
+      fecha: formatFechaCL(hoyISO()),
       autor: userName,
       texto: `Respuesta a consulta de ${item.autor ?? "jefatura"}: "${respuesta}"`,
       tipo: "jefatura",
