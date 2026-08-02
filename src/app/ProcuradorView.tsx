@@ -13,11 +13,11 @@ import {
   PieChart, Pie, Cell, LineChart, Line,
 } from "recharts";
 import { fetchListadoCausas, fetchCausaDetalle, fetchProcuradores, fetchMiCartera, type CausaListadoItem, type CausaWeb, type MiCarteraCausaItem } from "../lib/api";
+import { accionTipoParaSubestado, type AccionTipo } from "./bandejaReglas";
 
 // ─── Tipos ──────────────────────────────────────────────────────────────────
 
 type EstadoSLA = "estandar" | "limite" | "fuera";
-type AccionTipo = "apercibimiento" | "despachese" | "designacion_martillero" | "fuerza_publica" | "previo" | "consulta";
 
 interface WorkItem {
   id: string;
@@ -141,27 +141,6 @@ const ESTADO_META: Record<EstadoSLA, { label: string; dot: string; bg: string; t
   limite: { label: "Límite", dot: "bg-amber-400", bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200", hoverBorder: "hover:border-amber-400" },
   fuera: { label: "Crítico", dot: "bg-red-500", bg: "bg-red-50", text: "text-red-700", border: "border-red-200", hoverBorder: "hover:border-red-400" },
 };
-
-function normalizarTexto(s: string): string {
-  return s
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .trim();
-}
-
-// El texto real del subestado en el CRM trae palabras extra que varían
-// (ej. "ACOMPAÑA DOCUMENTOS AL TRIBUNAL", no solo "Acompaña documentos"), así
-// que no se puede filtrar server-side por igualdad exacta: se pide toda la
-// cartera y se matchea por substring normalizado (sin tildes, minúsculas).
-function accionTipoParaSubestado(subestado: string | null | undefined): AccionTipo | undefined {
-  if (!subestado) return undefined;
-  const n = normalizarTexto(subestado);
-  if (n.includes("acompana documentos")) return "apercibimiento";
-  if (n.includes("cumple lo ordenado") || n.includes("cumplir lo ordenado")) return "previo";
-  if (n.includes("solicita fuerza publica") || n.includes("solicitar fuerza publica")) return "fuerza_publica";
-  return undefined;
-}
 
 // Trae toda la cartera real del procurador logueado (el servidor ya fuerza
 // el procurador_id de la sesión) y arma la bandeja con las causas cuyo
